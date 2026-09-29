@@ -1,0 +1,14 @@
+{
+  "id": "langchain4j",
+  "title": "LangChain4j",
+  "emoji": "🦜",
+  "stage": 4,
+  "order": 7,
+  "description": "Java 生态 LLM 应用框架：对话模型、AI Services、Tools 与 RAG",
+  "chapters": [
+    { "id": "01-chat-model", "title": "LLM 接入与对话" },
+    { "id": "02-ai-services", "title": "AI Services 与结构化输出" },
+    { "id": "03-tools-rag", "title": "Tools 与 RAG" },
+    { "id": "04-memory-practice", "title": "记忆与工程实战" }
+  ]
+}

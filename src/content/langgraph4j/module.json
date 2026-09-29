@@ -1,0 +1,13 @@
+{
+  "id": "langgraph4j",
+  "title": "LangGraph4j",
+  "emoji": "🧭",
+  "stage": 4,
+  "order": 8,
+  "description": "基于图的 Agent 编排：状态图、条件边、人工介入与多 Agent 实战",
+  "chapters": [
+    { "id": "01-graph-state", "title": "图与状态" },
+    { "id": "02-flow-control", "title": "流程控制" },
+    { "id": "03-agent-practice", "title": "Agent 实战" }
+  ]
+}

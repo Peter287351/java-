@@ -1,0 +1,16 @@
+{
+  "id": "java-basics",
+  "title": "Java 基础",
+  "emoji": "☕",
+  "stage": 1,
+  "order": 1,
+  "description": "语法、面向对象、集合、泛型异常与并发入门，后端地基中的地基",
+  "chapters": [
+    { "id": "01-syntax", "title": "语法与数据类型" },
+    { "id": "02-oop", "title": "面向对象" },
+    { "id": "03-collections", "title": "集合框架" },
+    { "id": "04-generics-exceptions", "title": "泛型与异常" },
+    { "id": "05-api-io", "title": "常用 API 与 IO" },
+    { "id": "06-functional-concurrency", "title": "函数式与并发入门" }
+  ]
+}

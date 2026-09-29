@@ -1,0 +1,16 @@
+{
+  "id": "springboot",
+  "title": "Spring Boot",
+  "emoji": "🍃",
+  "stage": 3,
+  "order": 6,
+  "description": "自动配置、Web 开发、数据访问、缓存整合与工程化实践",
+  "chapters": [
+    { "id": "01-autoconfig", "title": "自动配置核心机制" },
+    { "id": "02-config-profiles", "title": "配置与多环境" },
+    { "id": "03-web-dev", "title": "Web 开发" },
+    { "id": "04-data-access", "title": "数据访问" },
+    { "id": "05-redis-cache", "title": "整合 Redis 与缓存" },
+    { "id": "06-engineering", "title": "工程化实践" }
+  ]
+}

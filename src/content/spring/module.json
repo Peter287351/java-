@@ -1,0 +1,15 @@
+{
+  "id": "spring",
+  "title": "Spring 框架",
+  "emoji": "🌱",
+  "stage": 3,
+  "order": 5,
+  "description": "IoC/DI、Bean 生命周期、AOP、事务与 MVC 原理",
+  "chapters": [
+    { "id": "01-ioc-di", "title": "IoC 与依赖注入" },
+    { "id": "02-bean-lifecycle", "title": "Bean 生命周期与作用域" },
+    { "id": "03-aop", "title": "AOP 面向切面编程" },
+    { "id": "04-transaction", "title": "声明式事务" },
+    { "id": "05-mvc", "title": "Spring MVC 原理" }
+  ]
+}

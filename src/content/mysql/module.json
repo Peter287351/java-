@@ -1,0 +1,16 @@
+{
+  "id": "mysql",
+  "title": "MySQL",
+  "emoji": "🐬",
+  "stage": 2,
+  "order": 2,
+  "description": "SQL、索引、事务与锁、日志架构到优化实战，关系型数据库全链路",
+  "chapters": [
+    { "id": "01-sql", "title": "SQL 基础与多表查询" },
+    { "id": "02-index", "title": "索引" },
+    { "id": "03-transaction-mvcc", "title": "事务与 MVCC" },
+    { "id": "04-locks", "title": "锁与并发" },
+    { "id": "05-logs-arch", "title": "日志与架构" },
+    { "id": "06-tuning", "title": "优化与实战" }
+  ]
+}

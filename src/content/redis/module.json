@@ -1,0 +1,15 @@
+{
+  "id": "redis",
+  "title": "Redis",
+  "emoji": "⚡",
+  "stage": 2,
+  "order": 3,
+  "description": "数据类型、持久化、缓存三大问题、分布式锁与高可用架构",
+  "chapters": [
+    { "id": "01-datatypes", "title": "数据类型与命令" },
+    { "id": "02-thread-persistence", "title": "线程模型与持久化" },
+    { "id": "03-cache-patterns", "title": "缓存实战" },
+    { "id": "04-advanced", "title": "高级特性" },
+    { "id": "05-ha-scenarios", "title": "高可用与场景" }
+  ]
+}

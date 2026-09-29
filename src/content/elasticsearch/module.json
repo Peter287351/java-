@@ -1,0 +1,14 @@
+{
+  "id": "elasticsearch",
+  "title": "Elasticsearch",
+  "emoji": "🔍",
+  "stage": 2,
+  "order": 4,
+  "description": "倒排索引、分词与 Mapping、DSL 查询到与 MySQL 的同步集成",
+  "chapters": [
+    { "id": "01-core-concepts", "title": "核心概念" },
+    { "id": "02-analysis-mapping", "title": "分词与 Mapping" },
+    { "id": "03-query-dsl", "title": "查询 DSL" },
+    { "id": "04-integration", "title": "实战集成" }
+  ]
+}
