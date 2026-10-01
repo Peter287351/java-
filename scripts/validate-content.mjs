@@ -43,8 +43,11 @@ const perModule = []
 let missingContent = false
 
 const moduleDirs = listDirs(CONTENT_ROOT).sort()
+// src/content/sql/ 是手写 SQL 题库（datasets/exercises），由 scripts/validate-sql.mjs 校验
+const SQL_DIR = 'sql'
 
 for (const mid of moduleDirs) {
+  if (mid === SQL_DIR) continue
   const moduleDir = join(CONTENT_ROOT, mid)
   const manifestPath = join(moduleDir, 'module.json')
   if (!existsSync(manifestPath)) {
