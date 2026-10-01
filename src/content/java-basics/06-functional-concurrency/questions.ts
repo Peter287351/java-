@@ -135,4 +135,22 @@ public class Main {
     explanation:
       'C 正确：栈、本地方法栈、程序计数器随线程生灭、天然隔离；堆与方法区被所有线程共享。A 错误：对象在堆上，栈里只放局部变量表和对象引用。B 错误：栈溢出来自方法调用深度超限（典型如递归无出口），与堆大小无关，调大 -Xmx 无效。D 错误：字符串常量池 JDK 7 起就在堆中；元空间存放类元数据且使用本地内存。',
   },
+  {
+    id: 'java-basics-06-functional-concurrency-008',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['线程池', 'OOM'],
+    scenario:
+      '导出服务用 Executors.newFixedThreadPool(10) 处理导出请求，任务内部同步调用慢速的外部接口（平均 3 秒）。运营搞大促期间，服务重启后日志出现 OutOfMemoryError: unable to create native thread 之前堆里堆积了大量排队任务对象，接口 RT 全面飙升。',
+    stem: '对根因与改造的判断，最准确的是？',
+    options: [
+      { key: 'A', text: 'newFixedThreadPool 的无界 LinkedBlockingQueue 在提交速度 > 消费速度时无限堆积任务导致 OOM；应显式 new ThreadPoolExecutor 用有界队列 + 合理拒绝策略，并把慢 IO 任务与核心任务隔离（独立线程池/限流）' },
+      { key: 'B', text: '线程数 10 太少，加到 200 让任务都能立刻执行就不会堆积了' },
+      { key: 'C', text: '换成 Executors.newCachedThreadPool，线程能自动回收，天然不会 OOM' },
+      { key: 'D', text: '在任务里把外部接口调用改成异步回调，线程池的问题就自然消失了' },
+    ],
+    answers: ['A'],
+    explanation:
+      'newFixedThreadPool 与 newCachedThreadPool 都不允许在生产使用：前者无界队列堆积任务（本题 OOM 根因），后者线程数无上限可能耗尽线程资源。B 加大线程只会延缓堆积且放大上下文切换；C 换一种 OOM 方式；D 只缩短单任务耗时，突发流量下队列仍会无界增长。有界队列 + 拒绝策略（降级/快速失败）+ 隔离才是标准答案，这也是《阿里巴巴 Java 开发手册》强制规约的出处。',
+  },
 ]

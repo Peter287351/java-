@@ -5,6 +5,7 @@ import type { CompareResult, RunOutcome } from '@/lib/sqlRunner'
 import {
   compareResults,
   explainSqlError,
+  findMistakeHint,
   runOnDataset,
 } from '@/lib/sqlRunner'
 import { sqlDatasets } from '@/content/sql/datasets'
@@ -54,6 +55,7 @@ const editorText = ref('')
 const engineReady = ref(false)
 const engineError = ref('')
 const checking = ref(false)
+const mistakeHint = ref<string | null>(null)
 const result = ref<
   | { kind: 'syntax'; message: string; raw: string }
   | { kind: 'fail'; compare: CompareResult; expected: RunOutcome; actual: RunOutcome }
@@ -101,9 +103,10 @@ const tableNames = computed(() =>
 
 async function runCheck() {
   if (checking.value) return
-    checking.value = true
-    result.value = null
-    try {
+  checking.value = true
+  result.value = null
+  mistakeHint.value = null
+  try {
     // 参考答案与用户 SQL 各自在全新的内存库上执行，互不影响
     const expected = await runOnDataset(selectedDataset.value, selected.value.reference)
     const actual = await runOnDataset(selectedDataset.value, editorText.value)
@@ -119,6 +122,7 @@ async function runCheck() {
       answerRevealed.value = true
       if (firstEver) setTimeout(() => confetti(110), 250)
     } else {
+      mistakeHint.value = findMistakeHint(editorText.value, selected.value.commonMistakes)
       store.recordSqlAttempt(selected.value.id, false, false)
       result.value = { kind: 'fail', compare: cmp, expected, actual }
     }
@@ -241,8 +245,11 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           <p style="margin: 0 0 12px; line-height: 1.8">{{ selected.stem }}</p>
 
           <details class="schema-details">
-            <summary>📋 表结构（{{ tableNames.join('、') }}）</summary>
+            <summary>📋 表结构（{{ tableNames.join('、') }}）与引擎说明</summary>
             <pre class="sql-pre">{{ selectedDataset.ddl }}</pre>
+            <p class="muted small" style="margin: 8px 0 0">
+              引擎说明：仅接受单条 SELECT / WITH 查询；内置 DATEDIFF(a, b) 返回相差天数；日期为 TEXT（YYYY-MM-DD）可用字符串/substr 比较；支持窗口函数、CTE 与递归 CTE。
+            </p>
           </details>
 
           <textarea
@@ -297,6 +304,10 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           <!-- 结果不符 -->
           <template v-else>
             <p style="color: var(--red); font-weight: 700; margin: 0 0 8px">❌ 结果不正确</p>
+            <div v-if="mistakeHint" class="md-box" style="border-left: 3px solid var(--warn); margin-bottom: 10px">
+              <p class="explanation-title" style="color: var(--warn)">🎯 错因定位</p>
+              <p style="margin: 0">{{ mistakeHint }}</p>
+            </div>
             <p class="md-box" style="margin: 0 0 12px">{{ result.compare.message }}</p>
             <div class="sql-compare">
               <div>

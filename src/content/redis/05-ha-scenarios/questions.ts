@@ -131,4 +131,22 @@ export const questions: QuestionSpec[] = [
     explanation:
       'A/B/C 都是经典用法。D 错误——Redis 异步持久化与主从复制决定了它不适合做强一致资金数据的唯一事实来源，余额扣减应以 DB 为准，Redis 只做加速或预扣。',
   },
+  {
+    id: 'redis-05-ha-scenarios-009',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['秒杀', '预扣库存'],
+    scenario:
+      '秒杀方案：把 1000 件库存预热到 Redis（String DECR 原子预扣），扣到 0 的请求直接拒绝；MySQL 仍以乐观锁扣减为唯一事实来源。评审时有同事提出两个疑问：①"Redis 扣成功了但 DB 那步失败，库存岂不是永久少卖？"②"Redis 与 DB 库存怎么对账？"',
+    stem: '对该架构的解释与完善，最准确的是？',
+    options: [
+      { key: 'A', text: 'Redis 预扣只做「挡量」，不是最终库存：DB 失败/订单超时取消时按预扣记录回补 Redis（INCR）；以 DB 扣减结果为准做对账（定时比对 DB 实际扣减量与 Redis 计数），差值告警人工或自动校准' },
+      { key: 'B', text: '把 Redis 当唯一库存：DB 扣减失败就丢弃，不做回补，少卖总比超卖好' },
+      { key: 'C', text: '每秒把 DB 库存全量刷新覆盖到 Redis，保证两边永远一致' },
+      { key: 'D', text: '预扣成功后事务里同步等待 DB 扣减结果，失败立刻把事务回滚，Redis 不需要任何补偿' },
+    ],
+    answers: ['A'],
+    explanation:
+      '秒杀预扣的正确心智模型是「Redis 挡掉 99% 的无效流量，DB 乐观锁守住不超卖」：Redis 扣减与 DB 扣减是两个系统，必然存在中间失败，因此必须设计补偿（回补 INCR）与对账（以 DB 为准校准 Redis）。B 主动接受少卖且无对账，故障时无法发现；C 全量覆盖在并发预扣下会把已扣量的计数冲掉（覆盖窗口内的扣减全部丢失），还引入秒级延迟；D 让 DB 性能问题直接反压到 Redis 扣减路径，秒杀高频下事务长时间挂起反而放大风险——回补应异步执行。',
+  },
 ]

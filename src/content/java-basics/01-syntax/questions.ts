@@ -149,4 +149,22 @@ System.out.println(total);
     explanation:
       '根因是 IEEE 754 二进制浮点无法精确表示 0.1 等十进制小数，逐笔折扣与累加不断放大误差。A 从表示层根治：BigDecimal 做十进制精确计算，字符串构造避免 new BigDecimal(0.1) 继承 double 的误差，数据库用 DECIMAL 定点存储。B 错误：float 只有约 7 位有效数字，精度更低。C 是治标：每笔中间舍入会引入新的累积偏差，还与舍入模式耦合。D 方向错：DOUBLE 换 FLOAT 精度更差，而且问题并不只出在数据库。',
   },
+  {
+    id: 'java-basics-01-syntax-009',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['包装类', '缓存'],
+    scenario:
+      '订单服务用 Map<Long, Long> 统计「用户 ID → 订单数」，风控判断写的是 if (userId == 1001L) 走优惠逻辑。测试环境 userId 都很小（< 128）时正常；生产环境上线一批新用户（ID 很大）后，部分用户反馈优惠逻辑没生效，日志显示 userId 值确实等于 1001。',
+    stem: '对现象的判断与修复，最准确的是？',
+    options: [
+      { key: 'A', text: '== 比较的是包装类引用：小值命中 IntegerCache/Long 缓存返回同一对象所以「碰巧正确」，大值是不同对象；应改用 equals（或先拆箱比较 long 原始值）' },
+      { key: 'B', text: 'Long 缓存覆盖所有整数，大 ID 异常说明缓存配置过小，调大 -XX:AutoBoxCacheMax 即可，代码不用改' },
+      { key: 'C', text: '是 Map 的 key 比较出了问题，把 Map 换成 TreeMap 就好' },
+      { key: 'D', text: 'JIT 编译优化把比较折叠了，关闭 JIT 编译即可恢复' },
+    ],
+    answers: ['A'],
+    explanation:
+      '包装类 == 在 -128~127（Long 同样有缓存）内因返回缓存对象而「看起来正常」，超出范围后是不同对象，== 恒为 false——「测试正常、线上异常」正是缓存边界的典型症状。修复是语义层面的：对象比较用 equals，或用 long 原始值比较。B 只是掩盖问题且缓存调大有内存代价；C 与 Map 实现无关；D 是玄学归因。',
+  },
 ]

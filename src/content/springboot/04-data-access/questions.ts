@@ -115,4 +115,22 @@ export const questions: QuestionSpec[] = [
     explanation:
       '多数据源的正确姿势是"多套配置 + 明确路由规则"，常用 dynamic-datasource 组件或按包分包绑定。A 不存在这种自动路由；C 是误区——Spring 事务管理器只能管一个数据源，跨库需要分布式事务方案（Seata/最终一致），不能想当然；D 与需求背道而驰。',
   },
+  {
+    id: 'springboot-04-data-access-008',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['事务', 'MQ 时序'],
+    scenario:
+      '下单方法 @Transactional 内：先 insert 订单，再调用 MQ 发送"扣库存"消息。线上偶发：消费者已收到消息并扣了库存，但订单事务随后因后续步骤异常回滚——出现了"没订单却扣了库存"的脏数据。',
+    stem: '对根因与改造方案，最准确的是？',
+    options: [
+      { key: 'A', text: '消息在事务提交前发出，事务回滚后消息无法撤回；应在事务提交后再投递——用 TransactionSynchronization 的 afterCommit 回调发消息，或落地"本地消息表 + 定时投递/事务消息"保证 DB 与消息的最终一致' },
+      { key: 'B', text: '把发消息挪到 insert 订单之前，先通知后落库就不会出现不一致' },
+      { key: 'C', text: '在发送消息的代码外面 try-catch 吞掉异常，保证订单事务不回滚' },
+      { key: 'D', text: 'MQ 的发送与 DB 事务本来就是原子的，这是消费者重复消费的问题，给消费者加幂等即可' },
+    ],
+    answers: ['A'],
+    explanation:
+      '根因是「DB 事务」与「MQ 投递」是两个独立系统：事务未提交时消息已出，回滚无法追回。A 给出两类标准方案：提交后投递（afterCommit）与本地消息表/事务消息（RocketMQ 半消息），都保证"只有真正提交的事务才会产生消息"。B 更糟——消息先出而订单可能根本没写成功；C 掩盖异常、破坏一致性；D 混淆了"原子性"与"幂等"：二者根本不是原子操作，加幂等只解决重复消费，解决不了回滚后的脏消息。',
+  },
 ]

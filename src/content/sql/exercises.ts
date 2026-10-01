@@ -46,6 +46,12 @@ GROUP BY d.id, d.name ORDER BY d.id;`,
     explanation:
       'LEFT JOIN 保留没有员工的部门（财务部）；COUNT(e.id) 只统计非 NULL 的员工，无人部门自然为 0。若用 COUNT(*)，LEFT JOIN 产生的 NULL 行会被误计为 1——这是本题最大的坑。',
     orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'COUNT\\(\\s*\\*\\s*\\)',
+        hint: '本题用了 LEFT JOIN：没有员工的部门会连出一行全 NULL 的记录，COUNT(*) 会把它也数成 1（财务部人数错成 1）。统计员工应改用 COUNT(e.id)——NULL 不计数，「COUNT(*) 与 COUNT(列)」的语义差异正是本题考点。',
+      },
+    ],
   },
   {
     id: 'sql-003',
@@ -104,6 +110,12 @@ ORDER BY salary DESC, name;`,
     explanation:
       '工资去重后从高到低是 20000、15000、12000，第 3 高是 12000（赵六）。注意 DENSE_RANK（并列挤占名次但不跳号）与 RANK（跳号）、ROW_NUMBER（强制不并列）的区别，这是高频面试题。',
     orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'ROW_NUMBER',
+        hint: 'ROW_NUMBER() 给并列工资强行编不同序号，名次会错位。题目明确「相同工资算同一名次」——应搭配 DENSE_RANK()（并列同名次、不跳号）。',
+      },
+    ],
   },
   {
     id: 'sql-005',
@@ -198,6 +210,12 @@ ORDER BY uid ASC;`,
     explanation:
       'uid 1 在 01-05~01-08 连续 4 天、uid 3 在 01-02~01-05 连续 4 天，uid 2 最长只有 2 天（01-03~01-04），不符合。注意自连接要写成「锚点 +1 天、+2 天」的链式判断——若写成「两条记录都比锚点晚 1 天」，两条记录可以是同一行，会把连续 2 天误判成 3 天。另一常见解法是「日期减行号分组」（见备用思路）：连续区间的差值恒定，COUNT ≥ 3 即命中。本题预期输出 1、3 两行。',
     orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'DATEDIFF\\(\\s*a\\.dt,\\s*b\\.dt\\)\\s*=\\s*1[\\s\\S]*DATEDIFF\\(\\s*c\\.dt,\\s*b\\.dt\\)\\s*=\\s*1',
+        hint: '「两条记录都比锚点 b 晚 1 天」的自连接里，a 和 c 可以是同一行——连续 2 天就会被误判成 3 天（uid 2 的 01-03/01-04 就中招）。要写成锚点链式判断：a 连 b（+1 天）、同一个锚点 a 连 c（+2 天），保证是三个不同自然日。',
+      },
+    ],
   },
   {
     id: 'sql-009',
@@ -293,6 +311,12 @@ WHERE total = (SELECT MAX(total) FROM city_total);`,
     explanation:
       '北京（张伟 500）与上海（王芳 500）并列第一，所以要「= MAX」而不是 LIMIT 1——这也是本题考并列的意义。预期 2 行。窗口函数 RANK() OVER (ORDER BY SUM(...) DESC) 取 rk=1 是另一种写法。',
     orderMatters: false,
+    commonMistakes: [
+      {
+        pattern: 'LIMIT\\s+1\\b',
+        hint: 'LIMIT 1 在并列时只能取到其中一个城市，会漏掉并列冠军。保留全部并列的写法：WHERE total = (SELECT MAX(total) ...) 或 RANK() 窗口取 rk = 1。',
+      },
+    ],
   },
   {
     id: 'sql-013',
@@ -394,6 +418,253 @@ ORDER BY c.id;`,
     ],
     explanation:
       '预期只有刘强（广州）。NOT EXISTS 与 LEFT JOIN ... IS NULL 是「反连接」的两种标准实现；NOT IN 遇到 NULL 的行为是高频面试坑：NULL 参与比较结果为 UNKNOWN，导致整个 NOT IN 恒为假。',
+    orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'NOT\\s+IN',
+        hint: 'NOT IN 的子查询结果一旦含 NULL，整个 NOT IN 恒为假、查询返回空集（NULL 参与比较的结果是 UNKNOWN，NOT UNKNOWN 仍是 UNKNOWN）。更稳妥的写法是 NOT EXISTS 或 LEFT JOIN ... IS NULL。',
+      },
+    ],
+  },
+  {
+    id: 'sql-017',
+    title: '三表联查订单明细',
+    difficulty: 2,
+    tags: ['多表 JOIN'],
+    datasetId: 'shop',
+    stem: '查询每笔订单的订单 id、客户姓名、商品名称、金额四列，按订单 id 升序排列。',
+    reference: `SELECT o.id AS order_id, c.name AS cust_name, p.name AS product_name, o.amount
+FROM orders o
+JOIN customer c ON c.id = o.cust_id
+JOIN product p ON p.id = o.product_id
+ORDER BY o.id ASC;`,
+    alts: [
+      `SELECT o.id AS order_id, c.name AS cust_name, p.name AS product_name, o.amount
+FROM customer c
+JOIN orders o ON o.cust_id = c.id
+JOIN product p ON p.id = o.product_id
+ORDER BY o.id;`,
+    ],
+    hints: [
+      '订单表是「中间表」，分别 JOIN 客户表与商品表，各自用外键等值连接。',
+      '三表都起了别名（o/c/p），SELECT 里跨表取列要带别名前缀。',
+    ],
+    explanation:
+      '多表 JOIN 按外键链路逐表连接：orders → customer（cust_id）、orders → product（product_id）。连接条件必须逐对写清，漏一个 JOIN 条件就会产生笛卡尔积——这也是行数暴增问题的第一嫌疑。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-018',
+    title: '工资高于直属上级的员工',
+    difficulty: 3,
+    tags: ['自连接', '不等值连接'],
+    datasetId: 'staff',
+    stem: 'staff 表含工资列。查询工资高于自己直属上级的员工，输出员工名、员工工资、上级名、上级工资四列，按员工 id 升序排列。',
+    reference: `SELECT e.name AS emp_name, e.salary AS emp_salary,
+  m.name AS mgr_name, m.salary AS mgr_salary
+FROM staff e
+JOIN staff m ON m.id = e.manager_id
+WHERE e.salary > m.salary
+ORDER BY e.id ASC;`,
+    hints: [
+      '自连接除了「等值连接取上级」，还可以在 WHERE 里做不等值比较（> / <）。',
+      '两个员工视图 e（下属）与 m（上级）通过 ON m.id = e.manager_id 相连。',
+    ],
+    explanation:
+      '自连接 + 不等值比较是经典面试题（LeetCode「高于经理的员工」同款）：e 是员工视角、m 是其上级，WHERE e.salary > m.salary 完成跨行比较。CEO 没有上级，内连接自动排除。预期只有吴员工（18000 > 王总监 15000）。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-019',
+    title: '部门工资前两档',
+    difficulty: 3,
+    tags: ['DENSE_RANK', 'TopN'],
+    datasetId: 'hr',
+    stem: '查询每个部门工资最高的前两档（不同薪值，同薪并列都保留），输出部门名、姓名、工资、名次四列，按部门 id、名次、员工 id 升序排列。',
+    reference: `SELECT d.name AS dept_name, t.name AS emp_name, t.salary, t.rk
+FROM (
+  SELECT id, name, salary, dept_id,
+         DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rk
+  FROM emp
+  WHERE dept_id IS NOT NULL
+) t
+JOIN dept d ON d.id = t.dept_id
+WHERE t.rk <= 2
+ORDER BY t.dept_id ASC, t.rk ASC, t.id ASC;`,
+    alts: [
+      `SELECT d.name AS dept_name, e.name AS emp_name, e.salary,
+  (SELECT COUNT(DISTINCT e2.salary) FROM emp e2
+   WHERE e2.dept_id = e.dept_id AND e2.salary > e.salary) + 1 AS rk
+FROM emp e
+JOIN dept d ON d.id = e.dept_id
+WHERE (SELECT COUNT(DISTINCT e2.salary) FROM emp e2
+       WHERE e2.dept_id = e.dept_id AND e2.salary > e.salary) + 1 <= 2
+ORDER BY e.dept_id, rk, e.id;`,
+    ],
+    commonMistakes: [
+      {
+        pattern: 'ROW_NUMBER',
+        hint: 'ROW_NUMBER() 把并列工资强行编成不同名次，会漏掉并列的人（20000 的两人只剩一个）。题目要求「同薪并列都保留」——应搭配 DENSE_RANK()。',
+      },
+      {
+        pattern: 'RANK',
+        hint: 'RANK() 并列后跳号（1,1,3），rk<=2 会漏掉第 2 档的员工。「不同薪值前两档且并列保留」对应 DENSE_RANK()（1,1,2）。',
+      },
+    ],
+    hints: [
+      '「前 N 档且并列保留」标准解法：DENSE_RANK() OVER (PARTITION BY 部门 ORDER BY 工资 DESC)，外层过滤 rk <= N。',
+      'ROW_NUMBER 不保留并列、RANK 并列后跳号，两者在本题都会丢人——选错窗口函数是本题的埋点。',
+    ],
+    explanation:
+      '预期 6 行：技术部 李四/王五（第 1 档并列）+ 张三（第 2 档）、销售部 赵六/钱七、人事部 孙八。备用解法用「比我工资高的不同薪值个数 + 1」模拟密集名次，结果与窗口函数一致。这是「每组前 N」面试题的标准变体。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-020',
+    title: '高于平均工资',
+    difficulty: 2,
+    tags: ['标量子查询', 'AVG'],
+    datasetId: 'hr',
+    stem: '查询工资高于全公司平均工资的员工姓名与工资，按工资降序、姓名升序排列。注意：WHERE 里不能直接写聚合函数。',
+    reference: `SELECT name, salary FROM emp
+WHERE salary > (SELECT AVG(salary) FROM emp)
+ORDER BY salary DESC, name ASC;`,
+    alts: [
+      `WITH avg_sal AS (SELECT AVG(salary) AS a FROM emp)
+SELECT name, salary FROM emp, avg_sal
+WHERE salary > avg_sal.a
+ORDER BY salary DESC, name;`,
+    ],
+    hints: [
+      '聚合结果要先算出来再比较：放在子查询里 (SELECT AVG(salary) FROM emp) 作为标量。',
+      'WHERE salary > AVG(salary) 会直接报错——聚合函数不能出现在 WHERE 中。',
+    ],
+    explanation:
+      '全公司平均约 13428.6，高于它的有李四、王五（20000）与张三（15000）共 3 行。这个「先聚合、再比较」的模式是 AVG/SUM 对比类题目的通用模板，也可以用 CTE 写得更清晰。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-021',
+    title: '条件合并查询（UNION）',
+    difficulty: 2,
+    tags: ['UNION', '集合运算'],
+    datasetId: 'hr',
+    stem: '查询「2021 年入职」以及「工资不低于 15000」的员工（两个条件取并集且去重），输出姓名与工资，按工资降序、姓名升序排列。',
+    reference: `SELECT name, salary FROM emp
+WHERE hire_date >= '2021-01-01' AND hire_date < '2022-01-01'
+UNION
+SELECT name, salary FROM emp
+WHERE salary >= 15000
+ORDER BY salary DESC, name ASC;`,
+    alts: [
+      `SELECT name, salary FROM emp
+WHERE (hire_date >= '2021-01-01' AND hire_date < '2022-01-01') OR salary >= 15000
+ORDER BY salary DESC, name;`,
+    ],
+    commonMistakes: [
+      {
+        pattern: 'UNION\\s+ALL',
+        hint: 'UNION ALL 不去重：张三同时满足两个条件会出现两次。题目要求「合并去重」，应改用 UNION（等价于对合并结果做 DISTINCT）。',
+      },
+    ],
+    hints: [
+      '两个 SELECT 列数与列类型必须一致，才能 UNION；去重是 UNION 的默认行为。',
+      '张三两个条件都满足——用 UNION 会只剩一行，用 UNION ALL 会出现两行，这正是二者的区别。',
+    ],
+    explanation:
+      '2021 年入职：张三、赵六；工资 ≥15000：李四、王五、张三。UNION 去重后 4 行（张三只出现一次）。UNION 会隐式排序去重、开销更大；确认不需要去重时用 UNION ALL 性能更好——面试常问这个取舍。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-022',
+    title: '最近下单距今几天',
+    difficulty: 2,
+    tags: ['日期函数', 'MAX'],
+    datasetId: 'shop',
+    stem: '以 2024-02-01 为基准日，查询每位下过单的客户最近一次下单日期与距基准日的天数（用引擎内置 DATEDIFF(基准日, 日期) 计算）。输出客户名、最近下单日、间隔天数三列，按间隔天数升序、客户名升序排列。',
+    reference: `SELECT c.name AS cust_name, MAX(o.created) AS last_dt,
+  DATEDIFF('2024-02-01', MAX(o.created)) AS days_ago
+FROM customer c
+JOIN orders o ON o.cust_id = c.id
+GROUP BY c.id, c.name
+ORDER BY days_ago ASC, c.name ASC;`,
+    hints: [
+      '先用 GROUP BY 客户求 MAX(created)（最近一单），再对聚合结果做日期差。',
+      'DATEDIFF 第一个参数是基准日（被减数），结果是「基准日 - 日期」的天数。',
+    ],
+    explanation:
+      '聚合之后才能算差值：王芳 01-20（12 天）、李娜 01-15（17 天）、张伟 01-12（20 天）。MySQL 里对应 DATEDIFF(a, b)（语义相同）；若要跨月跨年精确天数，日期差函数是最直接的方案。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-023',
+    title: '下过大额订单的客户',
+    difficulty: 2,
+    tags: ['EXISTS', '相关子查询'],
+    datasetId: 'shop',
+    stem: '查询下过金额 ≥ 300 订单的客户姓名与所在城市，按客户 id 升序排列。',
+    reference: `SELECT c.name, c.city FROM customer c
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.cust_id = c.id AND o.amount >= 300)
+ORDER BY c.id ASC;`,
+    alts: [
+      `SELECT DISTINCT c.name, c.city FROM customer c
+JOIN orders o ON o.cust_id = c.id
+WHERE o.amount >= 300
+ORDER BY c.id;`,
+    ],
+    hints: [
+      '「存在满足条件的记录」用 EXISTS + 相关子查询：子查询里引用外层 c.id 逐行判断。',
+      'EXISTS 只关心子查询有没有结果行，SELECT 1 是约定写法，不需要真的取列。',
+    ],
+    explanation:
+      '张伟（300）、王芳（350）命中。JOIN 写法必须配 DISTINCT（一客户多笔大额订单会重复出现），EXISTS 天然不重复且找到第一行就短路，语义与性能都是面试高频考点。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-024',
+    title: '客户消费排名（CTE + 窗口）',
+    difficulty: 3,
+    tags: ['CTE', 'ROW_NUMBER'],
+    datasetId: 'shop',
+    stem: '统计每位下过单客户的消费总额，并用 ROW_NUMBER 按总额降序（同额按姓名升序）编排名。输出客户名、总额、排名三列，按排名升序排列。使用 WITH 子句（CTE）分两步完成。',
+    reference: `WITH cust_total AS (
+  SELECT c.id, c.name, SUM(o.amount) AS total
+  FROM customer c
+  JOIN orders o ON o.cust_id = c.id
+  GROUP BY c.id, c.name
+)
+SELECT name, total, ROW_NUMBER() OVER (ORDER BY total DESC, name ASC) AS rk
+FROM cust_total
+ORDER BY rk ASC;`,
+    hints: [
+      'CTE 把「聚合」与「排名」拆成两步：先在 WITH 里算出每客户总额，再对中间结果开窗编号。',
+      'ROW_NUMBER 需要明确的排序规则：OVER (ORDER BY total DESC, name ASC)，并列时靠姓名稳定次序。',
+    ],
+    explanation:
+      '张伟 500（第 1）、王芳 500（第 2）、李娜 100（第 3）——ROW_NUMBER 强制不并列，所以并列总额也分先后（这正是它与 RANK/DENSE_RANK 的差异）。CTE 让复杂查询「先做什么、再做什么」一目了然，是复杂 SQL 工程化的基本功。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-025',
+    title: '入职年份去重',
+    difficulty: 1,
+    tags: ['DISTINCT'],
+    datasetId: 'hr',
+    stem: '查询有哪些年份有员工入职（对年份去重），输出一列年份，按年份升序排列。提示：用 substr(hire_date, 1, 4) 取年份。',
+    reference: `SELECT DISTINCT substr(hire_date, 1, 4) AS hire_year
+FROM emp
+ORDER BY hire_year ASC;`,
+    alts: [
+      `SELECT substr(hire_date, 1, 4) AS hire_year FROM emp
+GROUP BY substr(hire_date, 1, 4)
+ORDER BY hire_year;`,
+    ],
+    hints: [
+      'DISTINCT 对 SELECT 的结果去重；DISTINCT 必须紧跟 SELECT 关键字。',
+      'GROUP BY 同一列也能实现去重，二者在这里等价。',
+    ],
+    explanation:
+      '预期 2020、2021、2022、2023 四行。DISTINCT 与 GROUP BY 的去重等价，但语义上「纯去重」用 DISTINCT 更清晰；GROUP BY 通常伴随聚合。注意 DISTINCT 写在多列时是对「整行组合」去重。',
     orderMatters: true,
   },
 ]

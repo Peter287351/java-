@@ -115,4 +115,22 @@ export const questions: QuestionSpec[] = [
     explanation:
       'A/B/C 是 RAG 运维三件套：数据新鲜度、可追溯、可评估。D 错误——不同嵌入模型的向量空间不兼容，换模型必须全量重嵌入。',
   },
+  {
+    id: 'langchain4j-03-tools-rag-008',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['工具安全', '人工确认'],
+    scenario:
+      'Agent 挂了 sendEmail 群发工具用于"给客户发活动通知"。灰度测试发现：用户输入模糊指令（"帮我通知一下大家"）时，模型经常自行选择工具、拉全量名单直接群发，引发投诉。',
+    stem: '对工具权限的治理方案，最合理的是？',
+    options: [
+      { key: 'A', text: '高危工具（发送/支付/删除）加人工确认闸口（如 LangGraph4j 的 interrupt 审批）+ 收件人白名单与频次上限 + 工具描述写清适用边界，指令不明确时先反问澄清再执行' },
+      { key: 'B', text: '把 sendEmail 工具直接下线，改回人工发送' },
+      { key: 'C', text: '把 temperature 调低，模型行为更确定就不会乱发邮件了' },
+      { key: 'D', text: '在 System Message 里写一句"未经确认不要发邮件"即可，模型会严格遵守' },
+    ],
+    answers: ['A'],
+    explanation:
+      '模型是概率系统，"文字约束"不能当安全边界：高危动作必须有结构性闸口——人工确认（interrupt）、白名单/频控（工程硬限制）、描述边界（提高选择准确率）、澄清追问（消歧）。B 一刀切放弃自动化收益；C 只影响生成随机性，不改变"模型有权直接执行"的架构问题；D 把安全寄托在提示词遵从上，正是此类事故的常见根因。',
+  },
 ]

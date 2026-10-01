@@ -144,4 +144,22 @@ PUT /orders/_settings
     explanation:
       '主分片数决定文档路由 hash(_routing) % number_of_shards 的落点，中途改变会让已写入文档的定位全部失效，因此它是创建时确定的静态设置，直接修改会返回 illegal_argument_exception，B 正确。扩分片的正规做法是 _split（新分片数须为原值的倍数）或建新索引 reindex，再配合别名切换。C、D 描述的自动行为并不存在；真正可以动态调整的是 number_of_replicas。',
   },
+  {
+    id: 'elasticsearch-01-core-concepts-009',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['选型'],
+    scenario:
+      '商品列表页用 MySQL `LIKE \'%keyword%\'` 检索 2000 万行商品表，前导通配符导致全表扫描，高峰期接口超时；产品经理同时要求"搜索结果要按相关性排序、关键词命中要标红"。',
+    stem: '技术方案的判断与选型，最合理的是？',
+    options: [
+      { key: 'A', text: '引入 Elasticsearch：商品名/描述建 text 索引配 IK 分词，match 查询 + 相关性算分 + 高亮；MySQL 仍是事实来源，按 ID 回表取详情，用同步机制保证最终一致' },
+      { key: 'B', text: '给商品名加普通索引，LIKE 就能走索引了' },
+      { key: 'C', text: '把商品表整体迁到 ES 作为唯一存储，业务读写全部走 ES' },
+      { key: 'D', text: '把 LIKE 查询结果缓存到 Redis，命中缓存就不再查库' },
+    ],
+    answers: ['A'],
+    explanation:
+      'LIKE \'%xx%\' 前导通配符无法走 B+ 树，且关系库没有分词与相关性算分能力——这正是倒排索引的适用场景。A 是标准架构：ES 做检索视图、MySQL 保持事实来源（事务与唯一约束），回表取详情，同步靠 canal/MQ/双写。B 前导 % 照样失效；C 把强一致、唯一约束、事务all压给 ES，得付出巨大同步与一致性代价；D 缓存解决不了"没缓存过的关键词仍全表扫描"，也没有分词与排序能力。',
+  },
 ]

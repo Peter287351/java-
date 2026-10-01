@@ -139,6 +139,8 @@ export interface SqlExercise {
   explanation: string
   /** 结果是否必须按序一致（题目要求排序时为 true） */
   orderMatters?: boolean
+  /** 常见错误定位：判分失败且用户 SQL 命中 pattern（正则源串）时，优先展示对应提示 */
+  commonMistakes?: { pattern: string; hint: string }[]
 }
 
 export interface SqlStat {

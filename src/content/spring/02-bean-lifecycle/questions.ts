@@ -144,4 +144,22 @@ public class LifecycleBean implements InitializingBean, DisposableBean {
     answers: ['A'],
     explanation: `销毁回调与初始化对称：注解（@PreDestroy）最先、接口（DisposableBean.destroy()）其次、配置（destroy-method）兜底；而非 Web 应用的容器不会随 JVM 退出自动关闭，需要显式 close() 或 registerShutdownHook() 注册关闭钩子。B 错，默认直接 kill 进程不会触发优雅关闭；C 错，容器对 prototype 只管创建，销毁回调由使用方负责；D 错，顺序记反了。`,
   },
+  {
+    id: 'spring-02-bean-lifecycle-009',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['作用域', '注入'],
+    scenario:
+      '导出中心为每次请求生成一个 prototype 的 ExportContext（携带请求参数与临时状态），由单例的 ExportService 注入使用。测试发现：并发导出时 A 请求的状态偶尔出现在 B 的导出文件里，且 ExportContext 的构造日志只打印了一次。',
+    stem: '对现象的判断与修复，最准确的是？',
+    options: [
+      { key: 'A', text: '单例注入 prototype 只在容器装配时创建一次，之后所有请求共享同一实例；需要每次获取新实例时，应使用 @Scope(proxyMode = ScopedProxyMode.TARGET_CLASS) 让注入的是代理，或注入 ObjectProvider<ExportContext> 在方法内 getObject()' },
+      { key: 'B', text: '把 ExportService 也改成 prototype 作用域，问题自然解决' },
+      { key: 'C', text: 'prototype 注入本来每次请求都会新建，是并发日志框架的时间戳错乱造成了误判' },
+      { key: 'D', text: '给 ExportContext 加 @Lazy 注解，让每次使用时都重新创建实例' },
+    ],
+    answers: ['A'],
+    explanation:
+      '作用域只对「获取 Bean 的那一刻」生效：单例 Service 装配时注入的 prototype 引用被永久持有，之后全部请求共用——状态串扰与"构造日志只打一次"都指向这一点。修复方案：作用域代理（注入代理、每次方法调用时才解析到新实例）或 ObjectProvider/ObjectFactory 按需获取。B 把整个 Service 变成多例，事务、缓存、上层引用全要重新设计，副作用远大于收益；C 对机制理解相反；D 的 @Lazy 只延迟首次初始化时机，不改变"单例持有一个实例"的事实。',
+  },
 ]

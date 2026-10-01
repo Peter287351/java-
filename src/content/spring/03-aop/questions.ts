@@ -152,4 +152,22 @@ public class LogAspect {
     answers: ['A'],
     explanation: `A 对：@Around 包裹目标方法，前半段取起始时间、proceed() 返回后计算耗时，JoinPoint.getSignature().getName() 拿方法名、getArgs() 拿入参，execution 表达式一把覆盖整个包，业务代码零改动、统一开关只需注掉切面。B 错，切面是单例，成员变量存开始时间在并发下互相覆盖，两个通知间传状态需要 ThreadLocal，方案脆弱；C 错，侵入每个业务方法，新增接口容易漏加；D 错，Filter 工作在请求层，粒度是 HTTP 请求，无法细分到 service 方法的调用。`,
   },
+  {
+    id: 'spring-03-aop-009',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['切面顺序', '@Order'],
+    scenario:
+      '写单方法上同时叠加 @Transactional 与自定义 LogAspect（@Around 记录入参/出参）。需求是"日志要记录方法最终状态（提交成功还是回滚）"，但上线后发现日志打印的返回值总是出现在事务结果之前，回滚时日志仍显示"成功返回"。',
+    stem: '对现象的解释与修复，最准确的是？',
+    options: [
+      { key: 'A', text: '事务本身也是一个切面：LogAspect 默认优先级高于事务切面（在内层），proceed() 返回时事务尚未提交/回滚。用 @Order 调整优先级让日志切面包在事务外层，或把"结果记录"放在 proceed() 之后并捕获异常判断是否回滚' },
+      { key: 'B', text: '切面执行顺序由 Spring 随机决定，无法控制，只能放弃这个需求' },
+      { key: 'C', text: '把 LogAspect 的通知从 @Around 换成 @After，就一定在事务提交之后执行' },
+      { key: 'D', text: '在日志切面里直接调用 TransactionSynchronizationManager 查询事务是否已提交，与切面顺序无关' },
+    ],
+    answers: ['A'],
+    explanation:
+      '事务用 AOP 实现，与自定义切面在同一条代理链上，顺序由 @Order/PriorityOrdered 决定（默认未排序时顺序不确定，但现象表明日志在内层）。理解这条链就明白：内层 proceed() 返回 ≠ 外层事务结束。修复就是控制顺序（日志外层）或在事务边界后判断。B 错误——顺序完全可控；C 错误——@After（after finally 语义）仍属于当前切面链，若日志切面在内层，@After 依旧先于外层事务收尾执行；D 方向可行但表述错误——查询同步器状态拿不到"本次是否回滚"的结论，正确做法是 Synchronization.afterCompletion 回调，而那本质上也要求理解事务边界。',
+  },
 ]

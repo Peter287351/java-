@@ -169,7 +169,7 @@ export function compareResults(
   return { pass: true }
 }
 
-/** 把 SQLite 报错翻译成"错在哪"的提示 */
+/** 把 SQLite 报错翻译成"错在哪"的提示（含语句搭配规则） */
 export function explainSqlError(err: string): string {
   const m = err.toLowerCase()
   if (/no such table:\s*(\S+)/.test(m))
@@ -179,9 +179,19 @@ export function explainSqlError(err: string): string {
     return `列 "${col}" 不存在：检查列名拼写；跨表取列别忘了 JOIN 并给表起别名。`
   }
   if (/misuse of aggregate|aggregate functions are not allowed/.test(m))
-    return '聚合函数（SUM/COUNT/MAX…）不能出现在 WHERE 里——对聚合结果的过滤要写进 HAVING，或包一层子查询。'
+    return '聚合函数（SUM/COUNT/MAX…）不能出现在 WHERE 里——WHERE 在分组前执行，过滤聚合结果要搭配 HAVING，或先包一层子查询。'
   if (/must appear in the group by|non-aggregate/.test(m))
-    return 'SELECT 里出现了既不是聚合结果、也不在 GROUP BY 里的列——把该列加入 GROUP BY，或对它套聚合函数。'
+    return 'SELECT 的非聚合列必须与 GROUP BY 搭配：该列要么加进 GROUP BY，要么套上聚合函数——否则引擎不知道该显示哪一组的值。'
+  if (/a group by clause is required before having/.test(m))
+    return 'HAVING 必须与 GROUP BY 搭配使用（或对整表聚合）：它过滤的是「分组后的聚合结果」，过滤原始行请用 WHERE。'
+  if (/order by term does not match|second order by term/.test(m))
+    return 'ORDER BY 引用了 SELECT 之外的列：使用 DISTINCT（或聚合查询）时，ORDER BY 的列必须出现在 SELECT 清单里。'
+  if (/no such function:\s*(\S+)/.test(m)) {
+    const fn = /no such function:\s*(\S+)/i.exec(err)?.[1] ?? ''
+    return `函数 ${fn} 不存在：判分引擎内置 DATEDIFF(a,b)（返回 a-b 天数）与标准 SQL 函数（substr/COALESCE/IFNULL/CASE WHEN）；MySQL 的 DATE_FORMAT/DATE_ADD/IF 等请改用等价写法。`
+  }
+  if (/wrong number of arguments to function/.test(m))
+    return '函数参数个数不对：核对函数签名（如 substr(字符串, 起始, 长度) 从 1 开始计数）。'
   if (/syntax error/.test(m)) {
     const near = /near "([^"]+)"/i.exec(err)?.[1]
     return near ? `语法错误，出错位置在 "${near}" 附近：检查逗号、引号、括号与关键字拼写。` : '语法错误：检查逗号、引号、括号与关键字拼写。'
@@ -190,4 +200,20 @@ export function explainSqlError(err: string): string {
     return '列名在多张表中都存在产生歧义：给同名列加上「表别名.列名」。'
   if (/only accepts select|一条查询语句/.test(err)) return err
   return '执行报错：请对照错误信息检查 SQL。'
+}
+
+/** 判分失败时的错因定位：命中题目预设的常见错误模式则给出针对性提示 */
+export function findMistakeHint(
+  userSql: string,
+  mistakes: { pattern: string; hint: string }[] | undefined,
+): string | null {
+  if (!mistakes?.length) return null
+  for (const mk of mistakes) {
+    try {
+      if (new RegExp(mk.pattern, 'i').test(userSql)) return mk.hint
+    } catch {
+      // 题库内的正则写错不应导致判分崩溃
+    }
+  }
+  return null
 }

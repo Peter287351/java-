@@ -115,4 +115,22 @@ export const questions: QuestionSpec[] = [
     explanation:
       '优势在"可控与可读"，不在性能数量级（A 夸大）；两者都支持集群（C 错）；D 不实。手工 JSON 让反序列化目标类型显式化，避免 JDK/泛型序列化的隐形坑。',
   },
+  {
+    id: 'springboot-05-redis-cache-008',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['缓存穿透', '空值缓存'],
+    scenario:
+      '商品详情接口被脚本用随机 id 扫描，DB 收到大量"查无此商品"的请求。团队已加了参数格式校验（合法格式仍可伪造大量未占用 id），DBA 要求把这类空结果的请求挡在数据库之前。',
+    stem: '下列组合方案最有效的是？',
+    options: [
+      { key: 'A', text: '空结果缓存（短 TTL，如 30~60s）+ 布隆过滤器拦截"确定不存在"的 id；注意 Spring Cache 需显式允许缓存 null（或用 RedisTemplate 手工写空值标记）' },
+      { key: 'B', text: '把详情缓存的 TTL 从 10 分钟延长到 24 小时，减少回源' },
+      { key: 'C', text: '在 DB 层给商品表加读锁，挡住无效并发' },
+      { key: 'D', text: '用 @Cacheable 默认行为就够了，null 结果天然会被缓存住' },
+    ],
+    answers: ['A'],
+    explanation:
+      '穿透的成因是"查不存在的数据永远不命中缓存"：空值缓存让第一次空查询也占住缓存位（短 TTL 避免新品上架后长期不一致），布隆过滤器用极小内存预判 id 是否存在。B 拉长的是"存在数据"的缓存，对不存在的 id 无效且数据陈旧；C 荒谬；D 恰好相反——Spring Cache 默认禁止缓存 null（写入会抛异常或直接跳过），必须显式开启，这正是"想当然用注解"的坑。',
+  },
 ]

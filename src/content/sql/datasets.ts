@@ -32,24 +32,27 @@ INSERT INTO login VALUES
   },
   {
     id: 'shop',
-    name: '客户与订单（shop）',
+    name: '客户、商品与订单（shop）',
     ddl: `CREATE TABLE customer(id INTEGER PRIMARY KEY, name TEXT NOT NULL, city TEXT NOT NULL);
-CREATE TABLE orders(id INTEGER PRIMARY KEY, cust_id INTEGER NOT NULL, amount INTEGER NOT NULL, created TEXT NOT NULL);
+CREATE TABLE product(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price INTEGER NOT NULL);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, cust_id INTEGER NOT NULL, product_id INTEGER NOT NULL, amount INTEGER NOT NULL, created TEXT NOT NULL);
 INSERT INTO customer VALUES
  (1,'张伟','北京'),(2,'王芳','上海'),(3,'李娜','深圳'),(4,'刘强','广州');
+INSERT INTO product VALUES
+ (101,'机械键盘',299),(102,'显示器',999),(103,'无线鼠标',129);
 INSERT INTO orders VALUES
- (1,1,300,'2024-01-05'),
- (2,1,200,'2024-01-12'),
- (3,2,350,'2024-01-07'),
- (4,2,150,'2024-01-20'),
- (5,3,100,'2024-01-15');`,
+ (1,1,101,300,'2024-01-05'),
+ (2,1,102,200,'2024-01-12'),
+ (3,2,103,350,'2024-01-07'),
+ (4,2,101,150,'2024-01-20'),
+ (5,3,102,100,'2024-01-15');`,
   },
   {
     id: 'staff',
     name: '员工汇报关系（staff）',
-    ddl: `CREATE TABLE staff(id INTEGER PRIMARY KEY, name TEXT NOT NULL, manager_id INTEGER);
+    ddl: `CREATE TABLE staff(id INTEGER PRIMARY KEY, name TEXT NOT NULL, manager_id INTEGER, salary INTEGER NOT NULL);
 INSERT INTO staff VALUES
- (1,'张总',NULL),(2,'李总监',1),(3,'王总监',1),(4,'赵经理',2),
- (5,'钱主管',4),(6,'孙员工',5),(7,'周员工',5),(8,'吴员工',3);`,
+ (1,'张总',NULL,30000),(2,'李总监',1,20000),(3,'王总监',1,15000),(4,'赵经理',2,12000),
+ (5,'钱主管',4,9000),(6,'孙员工',5,6000),(7,'周员工',5,6000),(8,'吴员工',3,18000);`,
   },
 ]

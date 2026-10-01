@@ -123,4 +123,22 @@ export const questions: QuestionSpec[] = [
     answers: ['B'],
     explanation: "排查链路：慢 → EXPLAIN 发现 type=ALL → 有索引却不走 → 对索引列套了 DATE() 函数导致失效。正确做法是改写成 sargable（可用索引）的范围条件：函数移到常量一侧，create_time 本身不做运算，idx_ct 以 range 扫描当天区间，扫描量从 2000 万降到当天的行数。A 治标不治本，全表扫描只是换台机器继续慢；C 无效：FORCE INDEX 无法绕过\"列上套函数\"造成的不可定位；D 改动类型会丢失时分秒信息、影响全部存量业务，代价远超改一条 SQL。",
   },
+  {
+    id: 'mysql-02-index-009',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['隐式转换', '索引失效'],
+    scenario:
+      '会员表 member 的 user_no 是 VARCHAR 并建了唯一索引。运营后台查询 `WHERE user_no = 10086`（前端传来的数字字面量）时接口超时，EXPLAIN 显示 type=ALL 全表扫描；把条件改成 `WHERE user_no = \'10086\'` 后毫秒级返回。',
+    stem: '对这个现象的根因与工程化修复，最准确的是？',
+    options: [
+      { key: 'A', text: '字符串列与数字比较时 MySQL 会把列隐式转换成数字（等价于对索引列套 CAST），索引失效退化为全表扫描；修复是入参类型与列类型对齐（传字符串），并在代码层杜绝数值/字符串混用' },
+      { key: 'B', text: '唯一索引坏了，DROP 后重建同一个索引即可恢复走索引' },
+      { key: 'C', text: '把 user_no 列改成 BIGINT，让比较两边都是数字，一劳永逸' },
+      { key: 'D', text: '在 user_no 上再建一个普通索引，优化器会自动选择能走的那种' },
+    ],
+    answers: ['A'],
+    explanation:
+      '隐式转换规则：字符串与数字比较时「字符串转数字」，于是对 user_no 每一行做 CAST——索引列被函数包裹，B+ 树无法定位，type=ALL。这与「列上套函数导致索引失效」同源。A 是根因修复；B 重建索引不改变失效机理；C 是重大 schema 变更：若业务号允许前导零/字母（如 "010086"、平台前缀），改 BIGINT 直接丢数据语义；D 再建索引同样被 CAST 挡住。经验法则：让比较两边的类型与列定义一致，是写 sargable SQL 的基本要求。',
+  },
 ]

@@ -156,4 +156,22 @@ public class Main {
     explanation:
       'remove 有 remove(int index) 与 remove(Object o) 两个重载：字面量 1 是 int，精确匹配下标版本（装箱到 Object 的匹配优先级更低），删掉下标 1 的元素 20，剩 [10, 30]，A 正确。B 是「按值删 1、列表里没有 1 所以不变」的臆测——代码根本走不到按值分支。C 是把 remove(1) 误当成删除第一个元素（下标 0）。D 错误：int 参数完全合法。List<Integer> 想按值删除必须写 list.remove(Integer.valueOf(20))，这是一对经典重载坑。',
   },
+  {
+    id: 'java-basics-03-collections-009',
+    type: 'scenario',
+    difficulty: 2,
+    tags: ['fail-fast', '遍历删除'],
+    scenario:
+      '定时任务遍历 ArrayList 过滤已注销用户：for-each 循环里直接 list.remove(u)。测试环境只有几十条数据从没出问题，生产数据上万后偶发 ConcurrentModificationException，且删除的元素越多越容易触发。',
+    stem: '对原因与修复的判断，最准确的是？',
+    options: [
+      { key: 'A', text: 'for-each 底层用 Iterator，遍历中直接改 list 会让 modCount 与迭代器记录的 expectedModCount 不一致，下次 next() 抛 CME；应改用 iterator.remove() 或 list.removeIf(u -> 条件)' },
+      { key: 'B', text: 'CME 是偶发的内存问题，捕获异常后重试整段逻辑即可' },
+      { key: 'C', text: '把 ArrayList 换成 Vector（线程安全）就不会再抛这个异常了' },
+      { key: 'D', text: '是堆内存不足导致的，把 -Xmx 调大一倍即可' },
+    ],
+    answers: ['A'],
+    explanation:
+      'fail-fast 机制：Iterator 每次 next() 校验 modCount，遍历中用 list 自身 remove 会修改它而不更新迭代器的 expectedModCount → 抛 CME；数据量小、删除恰好落在末尾时可能「侥幸不触发」，所以测试难复现。正确姿势是 iterator.remove()（同步修正两个计数）或 removeIf。B 治标且重试还会抛；Vector 同步的是线程安全不是 fail-fast，单线程遍历照样抛；D 与该异常无关。',
+  },
 ]
