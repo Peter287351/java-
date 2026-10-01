@@ -8,7 +8,6 @@ const props = defineProps<{ moduleId: string }>()
 const store = useProgressStore()
 
 const module = computed(() => getModule(props.moduleId))
-
 function statOf(qids: string[]) {
   return store.groupStat(qids)
 }
@@ -21,6 +20,17 @@ function statOf(qids: string[]) {
     <p class="breadcrumb"><router-link to="/path">学习路径</router-link> / {{ module.meta.title }}</p>
     <h1 class="page-title">{{ module.meta.emoji }} {{ module.meta.title }}</h1>
     <p class="page-sub muted">{{ module.meta.description }}</p>
+
+    <router-link v-if="module.meta.id === 'mysql'" to="/sql" class="sql-entry card hoverable">
+      <span style="font-size: 24px">✍️</span>
+      <div style="flex: 1">
+        <strong>手写 SQL 修炼场 · 每日一练</strong>
+        <p class="muted small" style="margin: 2px 0 0">
+          沙箱真实执行你的 SQL，与参考答案按结果集比对判分，错了告诉你错在哪 · 已通过 {{ store.sqlPassedCount }}/16 题
+        </p>
+      </div>
+      <button class="btn btn-primary">进入练习 →</button>
+    </router-link>
 
     <div class="chapter-row" v-for="(c, i) in module.chapters" :key="c.meta.id">
       <span class="chapter-num">{{ i + 1 }}</span>

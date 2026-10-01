@@ -16,6 +16,7 @@ function defaultData(): ProgressData {
     daily: {},
     lastVisit: null,
     activeExam: null,
+    sqlStats: {},
     xp: 0,
     unlocked: {},
     bestCombo: 0,
@@ -138,6 +139,32 @@ export const useProgressStore = defineStore('progress', () => {
     data.lastVisit = { moduleId, chapterId }
   }
 
+  /** 手写 SQL 练习：每次提交计 1 题到每日目标；首次通过 +20 XP，复过 +6，失败 +2 */
+  function recordSqlAttempt(exId: string, passed: boolean, viewedAnswer: boolean): boolean {
+    const s = data.sqlStats[exId] ?? { passed: 0, attempts: 0, viewedAnswer: false, lastAt: 0 }
+    const firstEverPass = passed && s.passed === 0
+    s.attempts++
+    if (passed) s.passed++
+    if (viewedAnswer) s.viewedAnswer = true
+    s.lastAt = Date.now()
+    data.sqlStats[exId] = s
+    const k = dateKey()
+    data.daily[k] = (data.daily[k] ?? 0) + 1
+    addXp(passed ? (firstEverPass ? 20 : 6) : 2)
+    if (streakDays.value >= 3) unlock('streak-3')
+    if (streakDays.value >= 7) unlock('streak-7')
+    const today = dateKey()
+    if ((data.daily[today] ?? 0) >= DAILY_GOAL && data.lastGoalCelebrate !== today) {
+      data.lastGoalCelebrate = today
+      pushToast('🌈', '今日目标达成！', `已答 ${data.daily[today]} 题，今天很充实`)
+    }
+    return firstEverPass
+  }
+
+  const sqlPassedCount = computed(
+    () => Object.values(data.sqlStats).filter((s) => s.passed > 0).length,
+  )
+
   function startExam(active: ActiveExam) {
     data.activeExam = active
   }
@@ -232,6 +259,8 @@ export const useProgressStore = defineStore('progress', () => {
     data,
     toasts,
     recordAnswer,
+    recordSqlAttempt,
+    sqlPassedCount,
     checkProgressAchievements,
     markDoubt,
     unmarkDoubt,

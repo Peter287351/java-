@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: '/chapter/:moduleId/:chapterId', component: () => import('./views/ChapterView.vue'), props: true },
     { path: '/practice', component: () => import('./views/PracticeView.vue') },
     { path: '/exam', component: () => import('./views/ExamView.vue') },
+    { path: '/sql', component: () => import('./views/SqlPracticeView.vue') },
     { path: '/wrong', component: () => import('./views/WrongBookView.vue') },
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },

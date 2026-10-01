@@ -108,6 +108,13 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
         </router-link>
       </div>
       <div class="card fade-up">
+        <h3>✍️ SQL 手写</h3>
+        <p class="muted" style="margin: 6px 0 12px">
+          今日必练：{{ store.sqlPassedCount }}/16 已通过 · 沙箱真实判分
+        </p>
+        <router-link to="/sql"><button class="btn btn-primary">去手写 SQL</button></router-link>
+      </div>
+      <div class="card fade-up">
         <h3>📝 模拟考试</h3>
         <p class="muted" style="margin: 6px 0 12px">
           {{ store.wrongIds.length ? `另有 ${store.wrongIds.length} 道错题待回收` : '20 题 / 25 分钟，按考点出报告' }}

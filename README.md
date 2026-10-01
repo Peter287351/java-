@@ -19,6 +19,7 @@
 
 - **先学后练**：每章 2–3 张知识卡（是什么→为什么→怎么用→常见坑→面试怎么问）+ 动手清单，学完即练
 - **四种题型**：单选 / 多选 / 情景题（真实故障排查场景）/ 代码阅读题（全部经过真实编译运行验证），解析覆盖每个错误选项
+- **手写 SQL 修炼场**：16 道从入门到递归 CTE 的面试手写题，每日一题；内嵌 SQLite（WASM）沙箱**真实执行**你的 SQL，与参考答案按结果集比对判分——语法错误/行数不符/数值差异分类提示错在哪，支持递进提示与等价写法（列顺序不同数据一致也算过）
 - **循序渐进**：每章题目按 入门 → 进阶 → 实战 自动排序
 - **模拟考试**：20 题 25 分钟，按难度配比抽题，交卷出考点报告
 - **错题本**：答错自动进本，连续答对 2 次自动移出
@@ -46,8 +47,9 @@ npm run preview    # 本地预览构建产物
 其他脚本：
 
 ```bash
-npm run validate    # 校验题库 schema（--strict 为全量严格模式）
-npm run typecheck   # TypeScript 类型检查
+npm run validate      # 校验题库 schema（--strict 为全量严格模式）
+npm run validate:sql  # 校验手写 SQL 题库：逐题真实执行参考答案 + 备用解法交叉比对
+npm run typecheck     # TypeScript 类型检查
 ```
 
 ## 部署（可选）
@@ -77,12 +79,15 @@ npm run typecheck   # TypeScript 类型检查
 docs/DESIGN.md            设计文档（含自我 review）
 docs/CONTENT_GUIDE.md     题库内容格式契约
 scripts/validate-content.mjs  题库校验脚本（直接 import 题目数据做结构化校验）
+scripts/validate-sql.mjs      SQL 题库校验（真实引擎执行 + 多解法交叉验证）
 src/content/<module>/     题库：module.json 清单 + 每章 cards.md / questions.ts
+src/content/sql/          手写 SQL 题库：datasets.ts 数据集 + exercises.ts 题目
 src/lib/content.ts        内容加载与索引（import.meta.glob 静态导入，按难度排序）
 src/lib/exam.ts           模考抽题与判卷
+src/lib/sqlRunner.ts      手写 SQL 判分引擎（sql.js 沙箱执行 + 结果集比对 + 错误归因）
 src/lib/motivation.ts     激励系统（等级/成就/彩带）
 src/stores/progress.ts    进度存储（localStorage 持久化）
-src/views/                页面（首页/路径/模块/章节/刷题/模考/错题本/设置）
+src/views/                页面（首页/路径/模块/章节/刷题/模考/手写SQL/错题本/设置）
 ```
 
 ## 技术栈

@@ -103,12 +103,49 @@ export interface ProgressData {
   daily: Record<string, number>
   lastVisit: { moduleId: string; chapterId: string } | null
   activeExam: ActiveExam | null
+  /** 手写 SQL 练习记录 */
+  sqlStats: Record<string, SqlStat>
   /** 经验值与成就（激励系统） */
   xp: number
   unlocked: Record<string, number>
   bestCombo: number
   /** 已庆祝过每日目标的日期 */
   lastGoalCelebrate: string
+}
+
+/* ---------- 手写 SQL 练习 ---------- */
+
+export interface SqlDataset {
+  id: string
+  name: string
+  /** 建表 + 初始化数据（多语句） */
+  ddl: string
+}
+
+export interface SqlExercise {
+  id: string
+  title: string
+  difficulty: 1 | 2 | 3
+  tags: string[]
+  datasetId: string
+  /** 业务问题 */
+  stem: string
+  /** 参考答案（判分基准） */
+  reference: string
+  /** 备用解法：与参考答案结果必须一致，用于双重验证 */
+  alts?: string[]
+  /** 递进提示 */
+  hints: string[]
+  explanation: string
+  /** 结果是否必须按序一致（题目要求排序时为 true） */
+  orderMatters?: boolean
+}
+
+export interface SqlStat {
+  passed: number
+  attempts: number
+  viewedAnswer: boolean
+  lastAt: number
 }
 
 export const STAGES: { stage: 1 | 2 | 3 | 4; title: string }[] = [
