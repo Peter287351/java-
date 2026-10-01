@@ -1300,3 +1300,322 @@ summary {
     padding: 22px 18px;
   }
 }
+
+/* ========== 动效升级：流动极光 / 聚光灯 / 流光标题 ========== */
+
+/* 流动极光背景（三团光晕缓慢漂移，GPU transform，无重绘） */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  will-change: transform;
+}
+
+.aurora .a1 {
+  width: 560px;
+  height: 440px;
+  left: -8%;
+  top: -10%;
+  background: radial-gradient(circle at 35% 35%, rgba(124, 140, 255, 0.5), transparent 70%);
+  animation: drift1 26s ease-in-out infinite alternate;
+}
+
+.aurora .a2 {
+  width: 480px;
+  height: 400px;
+  right: -6%;
+  top: 0%;
+  background: radial-gradient(circle at 60% 40%, rgba(56, 217, 245, 0.36), transparent 70%);
+  animation: drift2 33s ease-in-out infinite alternate;
+}
+
+.aurora .a3 {
+  width: 600px;
+  height: 480px;
+  left: 28%;
+  bottom: -20%;
+  background: radial-gradient(circle at 50% 50%, rgba(167, 139, 250, 0.42), transparent 70%);
+  animation: drift3 39s ease-in-out infinite alternate;
+}
+
+@keyframes drift1 {
+  to { transform: translate(90px, 70px) scale(1.18); }
+}
+
+@keyframes drift2 {
+  to { transform: translate(-70px, 90px) scale(1.12) rotate(12deg); }
+}
+
+@keyframes drift3 {
+  to { transform: translate(-90px, -60px) scale(1.2) rotate(-10deg); }
+}
+
+/* 聚光灯卡片：鼠标跟随的高光（Aceternity Spotlight 风格） */
+.spotlight {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s;
+  pointer-events: none;
+  background: radial-gradient(
+    460px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(124, 140, 255, 0.13),
+    transparent 45%
+  );
+}
+
+.spotlight:hover::before {
+  opacity: 1;
+}
+
+/* 渐变流光标题 */
+.grad-shimmer {
+  background: linear-gradient(120deg, #7c8cff, #a78bfa 30%, #38d9f5 55%, #a78bfa 80%, #7c8cff);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: 220% 0; }
+}
+
+/* 子元素交错入场 */
+.stagger > * {
+  animation: fadeUp 0.55s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.26s; }
+.stagger > *:nth-child(6) { animation-delay: 0.32s; }
+.stagger > *:nth-child(7) { animation-delay: 0.38s; }
+.stagger > *:nth-child(8) { animation-delay: 0.44s; }
+.stagger > *:nth-child(9) { animation-delay: 0.5s; }
+.stagger > *:nth-child(n + 10) { animation-delay: 0.56s; }
+
+/* 主按钮流光扫过 */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+
+.btn-primary:hover::after {
+  left: 135%;
+}
+
+/* Hero 漂浮光点 */
+.hero .spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: sparkFloat 5.5s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+@keyframes sparkFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.35; }
+  50% { transform: translateY(-18px) scale(1.5); opacity: 0.9; }
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 140, 255, 0.3);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 140, 255, 0.5);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ========== Zcode 娘挂件 ========== */
+.mascot {
+  position: fixed;
+  right: 16px;
+  bottom: 14px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  user-select: none;
+}
+
+.mascot-bubble {
+  position: relative;
+  max-width: 216px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: 14px 14px 4px 14px;
+  background: rgba(16, 22, 40, 0.94);
+  border: 1px solid rgba(124, 140, 255, 0.45);
+  box-shadow: 0 8px 30px rgba(2, 6, 18, 0.55);
+  backdrop-filter: blur(12px);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  animation: pop 0.35s both;
+}
+
+.mascot-bubble b {
+  color: #ffd166;
+}
+
+.mascot-body {
+  position: relative;
+  cursor: pointer;
+  animation: mascotBob 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 10px 22px rgba(60, 70, 180, 0.35));
+  transition: transform 0.2s;
+}
+
+.mascot-body:hover {
+  transform: scale(1.05) rotate(-2deg);
+}
+
+.mascot-body.hi {
+  animation: mascotJump 0.5s cubic-bezier(0.28, 1.6, 0.4, 1);
+}
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes mascotJump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12) translateY(-14px) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+
+.mascot-eyes {
+  animation: mascotBlink 4.6s infinite;
+  transform-origin: 100px 92px;
+}
+
+@keyframes mascotBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  95.5%, 97.5% { transform: scaleY(0.07); }
+}
+
+.mascot-tail-l {
+  animation: tailSwingL 3.2s ease-in-out infinite;
+  transform-origin: 34px 96px;
+}
+
+.mascot-tail-r {
+  animation: tailSwingR 3.2s ease-in-out infinite;
+  transform-origin: 166px 96px;
+}
+
+@keyframes tailSwingL {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(4deg); }
+}
+
+@keyframes tailSwingR {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-4deg); }
+}
+
+.mascot-close {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: rgba(16, 22, 40, 0.92);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.mascot-mini {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 150;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(124, 140, 255, 0.5);
+  background: linear-gradient(135deg, rgba(124, 140, 255, 0.25), rgba(56, 217, 245, 0.18));
+  backdrop-filter: blur(10px);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glow);
+  animation: mascotBob 3.6s ease-in-out infinite;
+}
+
+/* 无障碍：用户偏好减少动效时全部关闭 */
+@media (prefers-reduced-motion: reduce) {
+  .aurora span,
+  .grad-shimmer,
+  .stagger > *,
+  .hero .spark,
+  .mascot-body,
+  .mascot-eyes,
+  .mascot-tail-l,
+  .mascot-tail-r,
+  .btn-primary::after {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .mascot {
+    transform: scale(0.72);
+    transform-origin: bottom right;
+  }
+}

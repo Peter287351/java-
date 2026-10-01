@@ -10,7 +10,7 @@ import ModuleCard from '@/components/ModuleCard.vue'
 
   <section v-for="s in STAGES" :key="s.stage" class="stage-section">
     <h2 class="stage-title">阶段 {{ s.stage }} · {{ s.title }}</h2>
-    <div class="module-grid">
+    <div class="module-grid stagger">
       <ModuleCard v-for="m in modules.filter((m) => m.meta.stage === s.stage)" :key="m.meta.id" :module="m" />
     </div>
   </section>

@@ -32,7 +32,7 @@ function optionClass(key: string) {
 </script>
 
 <template>
-  <div class="question card">
+  <div v-spotlight class="question card">
     <div class="question-head">
       <span class="chip chip-blue">{{ typeLabel }}</span>
       <span class="chip">{{ diffLabel }}</span>

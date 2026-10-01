@@ -6,6 +6,7 @@ import { modules, getModule, getChapter, totalQuestionCount } from '@/lib/conten
 import { useProgressStore } from '@/stores/progress'
 import { ACHIEVEMENTS, DAILY_GOAL } from '@/lib/motivation'
 import ProgressRing from '@/components/ProgressRing.vue'
+import CountUp from '@/components/CountUp.vue'
 
 const store = useProgressStore()
 
@@ -49,9 +50,13 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
   <template v-else>
     <!-- 品牌 Hero -->
     <section class="hero">
+      <span class="spark" style="left: 6%; top: 18%; background: #7c8cff" />
+      <span class="spark" style="left: 46%; top: 8%; background: #38d9f5; animation-delay: 1.2s" />
+      <span class="spark" style="left: 82%; top: 62%; background: #a78bfa; animation-delay: 2.4s" />
+      <span class="spark" style="left: 68%; top: 14%; background: #ffd166; animation-delay: 3.1s" />
       <div>
         <h1>
-          <span v-if="!isNewUser">欢迎回来，</span><span class="grad-text">离实习又近了一天</span>
+          <span v-if="!isNewUser">欢迎回来，</span><span class="grad-shimmer">离实习又近了一天</span>
         </h1>
         <p class="slogan">
           {{ isNewUser
@@ -62,18 +67,19 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
           <span class="chip chip-blue">8 大模块</span>
           <span class="chip chip-blue">39 个章节</span>
           <span class="chip chip-blue">{{ totalQuestionCount }} 道精讲题</span>
+          <span class="chip chip-blue">25 道 SQL 手写</span>
           <span class="chip chip-green">完全免费</span>
         </div>
       </div>
       <div class="hero-stats">
-        <div class="stat-box"><strong>{{ store.streakDays }}</strong><span>连续打卡（天）</span></div>
-        <div class="stat-box"><strong>{{ store.todayCount }}</strong><span>今日已答（题）</span></div>
-        <div class="stat-box"><strong>{{ totalDone }}/{{ totalQuestionCount }}</strong><span>累计已掌握</span></div>
+        <div class="stat-box"><strong><CountUp :value="store.streakDays" /></strong><span>连续打卡（天）</span></div>
+        <div class="stat-box"><strong><CountUp :value="store.todayCount" /></strong><span>今日已答（题）</span></div>
+        <div class="stat-box"><strong><CountUp :value="totalDone" />/{{ totalQuestionCount }}</strong><span>累计已掌握</span></div>
       </div>
     </section>
 
     <!-- 等级与每日目标 -->
-    <div class="today-tasks">
+    <div class="today-tasks stagger">
       <div class="card fade-up">
         <h3>🎖️ 等级 Lv.{{ store.level.level }} · {{ store.level.title }}</h3>
         <div class="bar" style="margin: 10px 0 6px">
@@ -140,8 +146,8 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
     </div>
 
     <h2>模块进度 · 实习就绪 {{ readyCount }}/{{ modules.length }}</h2>
-    <div class="module-grid">
-      <div v-for="s in moduleStats" :key="s.m.meta.id" class="card module-tile">
+    <div class="module-grid stagger">
+      <div v-for="s in moduleStats" :key="s.m.meta.id" v-spotlight class="card module-tile">
         <div class="module-tile-head">
           <router-link :to="`/module/${s.m.meta.id}`" class="module-tile-title">
             <span class="module-emoji">{{ s.m.meta.emoji }}</span>

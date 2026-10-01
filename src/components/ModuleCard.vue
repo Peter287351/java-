@@ -21,7 +21,7 @@ function statOfChapter(c: Module['chapters'][number]) {
 </script>
 
 <template>
-  <router-link :to="`/module/${module.meta.id}`" class="module-card card">
+  <router-link v-spotlight :to="`/module/${module.meta.id}`" class="module-card card">
     <div class="module-card-head">
       <span class="module-emoji">{{ module.meta.emoji }}</span>
       <div>

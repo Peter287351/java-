@@ -235,7 +235,7 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
 
       <!-- 右：题目工作区 -->
       <section class="sql-work">
-        <div class="card">
+        <div v-spotlight class="card">
           <div class="question-head">
             <span class="chip chip-blue">{{ DIFF_LABEL[selected.difficulty] }}</span>
             <span v-for="t in selected.tags" :key="t" class="chip chip-tag">#{{ t }}</span>
