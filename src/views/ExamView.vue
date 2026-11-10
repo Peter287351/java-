@@ -128,7 +128,7 @@ function pct(s: { correct: number; total: number }) {
   <template v-if="phase === 'setup'">
     <h1 class="page-title">模拟考试</h1>
     <p class="page-sub muted">{{ EXAM_LEN }} 题 · {{ EXAM_MINUTES }} 分钟 · 按难度配比抽题 · 交卷后出考点报告（题库较小，题目可能与练习重复）</p>
-    <div class="card" style="max-width: 560px">
+    <div class="card" style="max-width: 100%">
       <h3>选择范围</h3>
       <div style="display: flex; flex-direction: column; gap: 10px; margin: 14px 0 20px">
         <label v-for="o in scopeOptions" :key="o.id" style="cursor: pointer">
@@ -139,7 +139,7 @@ function pct(s: { correct: number; total: number }) {
       <button class="btn btn-primary" @click="startExam">开始考试</button>
     </div>
 
-    <div v-if="store.data.exams.length" class="card" style="max-width: 560px; margin-top: 16px">
+    <div v-if="store.data.exams.length" class="card" style="max-width: 100%; margin-top: 16px">
       <h3>历史成绩</h3>
       <div v-for="e in [...store.data.exams].reverse().slice(0, 5)" :key="e.id" class="wrong-item">
         <strong>{{ e.correct }}/{{ e.total }}</strong>

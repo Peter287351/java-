@@ -75,10 +75,12 @@ body::after {
   background: rgba(124, 140, 255, 0.4);
 }
 
+/* 页面容器：随视口铺满整屏，两侧只留少量呼吸边距（越宽的屏留白略多，但不再夹成窄列） */
 .container {
-  max-width: 1080px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
-  padding: 0 18px;
+  padding: 0 clamp(18px, 2.5vw, 40px);
 }
 
 main.container {
@@ -175,17 +177,19 @@ a {
   position: sticky;
   top: 14px;
   z-index: 50;
-  padding: 0 14px;
+  /* 与 .container 用同一套边距，保证导航胶囊和正文左右对齐 */
+  padding: 0 clamp(18px, 2.5vw, 40px);
 }
 
 .navbar-inner {
-  max-width: 1080px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 58px;
-  padding: 0 8px 0 18px;
+  padding: 0 18px;
   border-radius: 999px;
   background: rgba(10, 15, 28, 0.72);
   border: 1px solid var(--border);
