@@ -4,6 +4,7 @@ import { getChapter, getModule, questionById, modules, totalQuestionCount } from
 import { useProgressStore } from '@/stores/progress'
 import { plainText } from '@/lib/utils'
 import MarkdownView from '@/components/MarkdownView.vue'
+import { mascotHidden, setMascotHidden } from '@/lib/mascotPref'
 
 const store = useProgressStore()
 const fileInput = ref<HTMLInputElement>()
@@ -69,6 +70,21 @@ const doubts = computed(() =>
       <br />进度保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
     </p>
     <p v-if="message" class="small" style="color: var(--green)">{{ message }}</p>
+  </div>
+
+  <div class="card settings-block">
+    <h3>界面偏好</h3>
+    <p class="muted small">
+      桌面右下角的学习搭子可以随时收起或召回；也可以直接点玩偶上的 × 收起，再用右下角的 ⚡ 召回。设置保存在本机浏览器。
+    </p>
+    <div class="question-actions">
+      <button class="btn" :class="mascotHidden ? 'btn-primary' : ''" @click="setMascotHidden(!mascotHidden)">
+        {{ mascotHidden ? '显示桌面玩偶' : '隐藏桌面玩偶' }}
+      </button>
+      <span class="chip" :class="mascotHidden ? '' : 'chip-green'">
+        {{ mascotHidden ? '当前：已隐藏' : '当前：显示中' }}
+      </span>
+    </div>
   </div>
 
   <div class="card settings-block">

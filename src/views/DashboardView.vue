@@ -39,7 +39,8 @@ const continueTask = computed(() => {
   return null
 })
 
-const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.title ?? ''
+const stageTitle = (s: 1 | 2 | 3 | 4 | 5 | 6) => STAGES.find((x) => x.stage === s)?.title ?? ''
+const chapterCount = computed(() => modules.reduce((n, m) => n + m.chapters.length, 0))
 </script>
 
 <template>
@@ -65,8 +66,8 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
             : '先学后练 · 错题回收 · 模考检验，保持节奏别停下' }}
         </p>
         <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap">
-          <span class="chip chip-blue">8 大模块</span>
-          <span class="chip chip-blue">39 个章节</span>
+          <span class="chip chip-blue">{{ modules.length }} 大模块</span>
+          <span class="chip chip-blue">{{ chapterCount }} 个章节</span>
           <span class="chip chip-blue">{{ totalQuestionCount }} 道精讲题</span>
           <span class="chip chip-blue">{{ sqlExercises.length }} 道 SQL 手写</span>
           <span class="chip chip-green">完全免费</span>

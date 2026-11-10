@@ -30,7 +30,7 @@ export interface ModuleMeta {
   id: string
   title: string
   emoji: string
-  stage: 1 | 2 | 3 | 4
+  stage: 1 | 2 | 3 | 4 | 5 | 6
   order: number
   description: string
   chapters: ChapterMeta[]
@@ -150,11 +150,13 @@ export interface SqlStat {
   lastAt: number
 }
 
-export const STAGES: { stage: 1 | 2 | 3 | 4; title: string }[] = [
+export const STAGES: { stage: 1 | 2 | 3 | 4 | 5 | 6; title: string }[] = [
   { stage: 1, title: '语言地基' },
   { stage: 2, title: '存储与中间件' },
   { stage: 3, title: '框架核心' },
   { stage: 4, title: 'AI 应用' },
+  { stage: 5, title: '微服务与分布式' },
+  { stage: 6, title: '交付与运维' },
 ]
 
 export const READY_ACCURACY = 0.8

@@ -28,7 +28,8 @@ export const modules: Module[] = (() => {
   const metas: ModuleMeta[] = Object.values(manifestModules).map(
     (m) => (m as { default: ModuleMeta }).default,
   )
-  metas.sort((a, b) => a.order - b.order)
+  // 先按学习阶段、再按阶段内顺序排列，保证首页模块列表与学习路径一致
+  metas.sort((a, b) => a.stage - b.stage || a.order - b.order)
   return metas.map((meta) => {
     const chapters: Chapter[] = meta.chapters.map((cm) => {
       // 与上面 glob 的相对路径保持一致，才能按文件名取到知识卡和题目

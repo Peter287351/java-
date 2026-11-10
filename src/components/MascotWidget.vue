@@ -2,10 +2,9 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useProgressStore } from '@/stores/progress'
 import { totalQuestionCount } from '@/lib/content'
+import { mascotHidden, setMascotHidden } from '@/lib/mascotPref'
 
 const store = useProgressStore()
-
-const hidden = ref(localStorage.getItem('hds_mascot_hidden') === '1')
 const bubble = ref('')
 const bouncing = ref(false)
 let rotateTimer: number | undefined
@@ -53,13 +52,11 @@ function onClick() {
 }
 
 function toggleHide() {
-  hidden.value = true
-  localStorage.setItem('hds_mascot_hidden', '1')
+  setMascotHidden(true)
 }
 
 function restore() {
-  hidden.value = false
-  localStorage.setItem('hds_mascot_hidden', '0')
+  setMascotHidden(false)
 }
 
 // 成就/目标通知时联动播报
@@ -88,7 +85,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="!hidden" class="mascot">
+  <div v-if="!mascotHidden" class="mascot">
     <div v-if="bubble" class="mascot-bubble" v-html="bubble" />
     <div class="mascot-body" :class="{ hi: bouncing }" @click="onClick">
       <button class="mascot-close" title="收起（可随时找回）" @click.stop="toggleHide">×</button>
