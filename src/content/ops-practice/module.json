@@ -1,0 +1,14 @@
+{
+  "id": "ops-practice",
+  "title": "运维排障实战",
+  "emoji": "🛠️",
+  "stage": 6,
+  "order": 15,
+  "description": "告警信号判读、用 SQL 查日志、变更与回滚、复盘与预案，串起一次线上故障的完整定位链路",
+  "chapters": [
+    { "id": "01-signal", "title": "告警与指标：先定位再动手" },
+    { "id": "02-log-sql", "title": "用 SQL 查日志定位故障" },
+    { "id": "03-change", "title": "变更、发布与回滚" },
+    { "id": "04-postmortem", "title": "复盘、预案与演练" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "deploy",
+  "title": "后端部署与 Linux 运维",
+  "emoji": "🚀",
+  "stage": 6,
+  "order": 11,
+  "description": "Linux 与权限、上传 jar 与进程守护、Nginx 反向代理与 HTTPS、日志排查与回滚",
+  "chapters": [
+    { "id": "01-linux", "title": "Linux 基础与文件权限" },
+    { "id": "02-upload", "title": "上传产物与进程守护" },
+    { "id": "03-nginx", "title": "Nginx、域名与 HTTPS" },
+    { "id": "04-troubleshoot", "title": "日志排查、健康检查与回滚" }
+  ]
+}
