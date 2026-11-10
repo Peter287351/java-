@@ -667,4 +667,198 @@ ORDER BY hire_year;`,
       '预期 2020、2021、2022、2023 四行。DISTINCT 与 GROUP BY 的去重等价，但语义上「纯去重」用 DISTINCT 更清晰；GROUP BY 通常伴随聚合。注意 DISTINCT 写在多列时是对「整行组合」去重。',
     orderMatters: true,
   },
+
+  /* ========== 运维排障场景：用 SQL 从日志、发布记录、心跳里定位故障 ========== */
+  {
+    id: 'sql-026',
+    title: '错误日志最多的服务',
+    difficulty: 1,
+    tags: ['运维排障', 'GROUP BY'],
+    datasetId: 'ops',
+    stem: '线上告警「服务报错变多」。先按服务统计 ERROR 级别日志条数，输出服务名、错误数两列，按错误数降序、服务名升序排列。提示：level 取值为 INFO / WARN / ERROR。',
+    reference: `SELECT service, COUNT(*) AS err_cnt
+FROM service_log
+WHERE level = 'ERROR'
+GROUP BY service
+ORDER BY err_cnt DESC, service ASC;`,
+    alts: [
+      `SELECT service, COUNT(id) AS err_cnt FROM service_log
+WHERE level = 'ERROR' GROUP BY service ORDER BY COUNT(id) DESC, service;`,
+    ],
+    hints: [
+      '先按 level 过滤出 ERROR 日志，再 GROUP BY service 按服务分组。',
+      '排序写成「错误数降序 + 服务名升序」结果才稳定；ORDER BY 可以直接引用 SELECT 里的别名。',
+    ],
+    explanation:
+      '排障第一步永远是「先聚合、再定位」：order 服务 6 条 ERROR、gateway 1 条、payment 1 条，user 服务没有错误日志所以不出现。注意 WHERE 过滤原始行、GROUP BY 分组、ORDER BY 排序的执行顺序；把 level 条件写进 HAVING 是错的——HAVING 过滤的是分组后的结果。',
+    orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'GROUP\\s+BY\\s+level',
+        hint: '按 level 分组得到的是「每种日志级别各几条」，不是「每个服务报了多少错」。题目要按服务定位，应该 GROUP BY service。',
+      },
+    ],
+  },
+  {
+    id: 'sql-027',
+    title: '各服务 5xx 错误率',
+    difficulty: 2,
+    tags: ['运维排障', '条件聚合'],
+    datasetId: 'ops',
+    stem: '统计每个服务的总请求数、5xx（status >= 500）请求数以及 5xx 占比百分数（保留两位小数，例如 60 表示 60%），输出服务名、总数、5xx 数、占比四列，按占比降序、服务名升序排列。',
+    reference: `SELECT service,
+  COUNT(*) AS total,
+  SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) AS err_5xx,
+  ROUND(100.0 * SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) / COUNT(*), 2) AS err_rate
+FROM service_log
+GROUP BY service
+ORDER BY err_rate DESC, service ASC;`,
+    alts: [
+      `WITH s AS (
+  SELECT service, COUNT(*) AS total,
+         SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) AS err_5xx
+  FROM service_log GROUP BY service
+)
+SELECT service, total, err_5xx, ROUND(err_5xx * 100.0 / total, 2) AS err_rate
+FROM s ORDER BY err_rate DESC, service;`,
+    ],
+    hints: [
+      '条件计数用 SUM(CASE WHEN 条件 THEN 1 ELSE 0 END)，一次扫描同时算出总请求数与 5xx 数。',
+      'SQLite 里两个整数相除会截断成整数：要写成 100.0 * ... / COUNT(*)（或先乘 1.0），再用 ROUND(..., 2) 保留两位小数。',
+    ],
+    explanation:
+      'order 服务 10 次请求中 6 次 5xx → 60，payment 1/3 → 33.33，gateway 1/4 → 25，user 0/3 → 0。这是线上 SLO 错误率报表的标准写法：条件聚合避免多次扫描；整数除法陷阱在 MySQL / SQLite 都要留意，分子先变成浮点才不会算成 0。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-028',
+    title: '定位故障爆发的时间窗口',
+    difficulty: 2,
+    tags: ['运维排障', '时间桶'],
+    datasetId: 'ops',
+    stem: '按分钟（取 ts 前 16 位）统计 5xx（status >= 500）日志条数，找出条数最多的那一分钟（并列都保留），输出分钟、条数两列，按分钟升序排列。',
+    reference: `WITH minute_stat AS (
+  SELECT substr(ts, 1, 16) AS minute, COUNT(*) AS cnt
+  FROM service_log
+  WHERE status >= 500
+  GROUP BY substr(ts, 1, 16)
+)
+SELECT minute, cnt FROM minute_stat
+WHERE cnt = (SELECT MAX(cnt) FROM minute_stat)
+ORDER BY minute ASC;`,
+    alts: [
+      `SELECT minute, cnt FROM (
+  SELECT substr(ts, 1, 16) AS minute, COUNT(*) AS cnt,
+         RANK() OVER (ORDER BY COUNT(*) DESC) AS rk
+  FROM service_log WHERE status >= 500
+  GROUP BY substr(ts, 1, 16)
+) t WHERE rk = 1 ORDER BY minute;`,
+    ],
+    hints: [
+      'ts 是 TEXT（YYYY-MM-DD HH:MM:SS），substr(ts, 1, 16) 就截到分钟，可以直接 GROUP BY。',
+      '先按分钟聚合出中间结果，再用 = MAX(cnt) 挑出峰值分钟；用 LIMIT 1 在并列时会漏掉其它分钟。',
+    ],
+    explanation:
+      '09:05 这一分钟有 3 条 5xx，是全时段峰值，正好对应 order 服务 v2 的发布时刻 09:05:00。运维定位故障的常见套路就是「按时间分桶 → 找峰值 → 对齐变更记录」；CTE 让「先聚合、再筛选」两步一目了然。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-029',
+    title: '最慢的 3 条请求',
+    difficulty: 2,
+    tags: ['运维排障', 'TOP N'],
+    datasetId: 'ops',
+    stem: '查询耗时最长的前 3 条请求，输出 trace_id、服务名、耗时毫秒三列，按耗时降序、trace_id 升序排列。',
+    reference: `SELECT trace_id, service, latency_ms
+FROM service_log
+ORDER BY latency_ms DESC, trace_id ASC
+LIMIT 3;`,
+    alts: [
+      `SELECT trace_id, service, latency_ms FROM (
+  SELECT trace_id, service, latency_ms,
+         ROW_NUMBER() OVER (ORDER BY latency_ms DESC, trace_id ASC) AS rn
+  FROM service_log
+) t WHERE rn <= 3 ORDER BY latency_ms DESC, trace_id ASC;`,
+    ],
+    hints: [
+      'TOP N 最直接写法：ORDER BY latency_ms DESC 之后接 LIMIT 3。',
+      '加上 trace_id 作为第二排序键，耗时相同时结果也稳定；ROW_NUMBER() 窗口函数是等价写法。',
+    ],
+    explanation:
+      '命中的是 t011（2600ms）、t016（2300ms）、t009（2100ms），全部属于 order 服务 v2，且都在 09:05 之后——与上一题的时间窗口结论互相印证。排障时拿着 trace_id 就能去链路追踪系统里查完整调用栈。',
+    orderMatters: true,
+  },
+  {
+    id: 'sql-030',
+    title: '定位是哪个发布版本引入故障',
+    difficulty: 3,
+    tags: ['运维排障', '多表关联'],
+    datasetId: 'ops',
+    stem: '关联发布记录与错误日志，统计每次发布版本对应的 ERROR 日志条数（用 service + version 双条件关联），只显示有错误日志的版本。输出服务名、版本、发布时间、错误数四列，按错误数降序、发布时间升序、服务名升序、版本升序排列。',
+    reference: `SELECT d.service, d.version, d.deployed_at, COUNT(l.id) AS err_cnt
+FROM deploy d
+JOIN service_log l
+  ON l.service = d.service AND l.version = d.version AND l.level = 'ERROR'
+GROUP BY d.id, d.service, d.version, d.deployed_at
+ORDER BY err_cnt DESC, d.deployed_at ASC, d.service ASC, d.version ASC;`,
+    alts: [
+      `WITH err AS (
+  SELECT service, version, COUNT(*) AS err_cnt
+  FROM service_log WHERE level = 'ERROR' GROUP BY service, version
+)
+SELECT d.service, d.version, d.deployed_at, err.err_cnt
+FROM deploy d JOIN err ON err.service = d.service AND err.version = d.version
+ORDER BY err.err_cnt DESC, d.deployed_at ASC, d.service ASC, d.version ASC;`,
+    ],
+    hints: [
+      'service_log 的 version 记录了「这条日志产生于哪个版本」，所以要用 service + version 两个条件关联 deploy。',
+      '只按 service 关联会把该服务所有版本的错误都算到每一次发布上；先聚合日志再 JOIN 是等价写法。',
+    ],
+    explanation:
+      'order v2（09:05 发布）以 5 条 ERROR 高居第一，而 order v1 只有 1 条——结论是 09:05 的 v2 发布引入了故障，应优先回滚 v2。这就是运维的「错误时间线 × 变更记录」关联分析：把「什么时候坏的」和「什么时候改了什么」对齐，是定位线上问题的第一动作。',
+    orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'ON\\s+\\w+\\.service\\s*=\\s*\\w+\\.service(?![\\s\\S]{0,80}version)',
+        hint: '只按 service 关联，会把该服务所有版本的错误都算到每一次发布上（order v1 也会被算成 6 条），定位不到具体版本。必须写成 ON l.service = d.service AND l.version = d.version。',
+      },
+    ],
+  },
+  {
+    id: 'sql-031',
+    title: '找出心跳异常的机器',
+    difficulty: 3,
+    tags: ['运维排障', '反连接'],
+    datasetId: 'ops',
+    stem: '以每台机器「最后一次心跳」为准，找出最后状态不是 OK 的机器，输出主机名、服务名、最后心跳时间、最后状态四列，按主机名升序排列。',
+    reference: `SELECT host, service, checked_at, status FROM (
+  SELECT host, service, checked_at, status,
+         ROW_NUMBER() OVER (PARTITION BY host ORDER BY checked_at DESC) AS rn
+  FROM heartbeat
+) t WHERE rn = 1 AND status <> 'OK'
+ORDER BY host ASC;`,
+    alts: [
+      `SELECT h.host, h.service, h.checked_at, h.status
+FROM heartbeat h
+WHERE h.status <> 'OK'
+  AND NOT EXISTS (
+    SELECT 1 FROM heartbeat h2
+    WHERE h2.host = h.host AND h2.checked_at > h.checked_at
+  )
+ORDER BY h.host ASC;`,
+    ],
+    hints: [
+      '关键是「最后一次」：用 ROW_NUMBER() OVER (PARTITION BY host ORDER BY checked_at DESC) 给每台机器的心跳倒序编号，取 rn = 1。',
+      '等价的反向思路：挑出状态异常且「不存在比它更新的心跳」的记录（NOT EXISTS 相关子查询）。',
+    ],
+    explanation:
+      'h-order-1 在 09:05 最后一次心跳是 DOWN，需要排查；h-gw-1 虽然 09:03 曾 DOWN，但 09:09 已恢复 OK，不应告警。只写「status 不等于 OK」的过滤会把历史抖动也算进来，是监控告警里最经典的误报来源。',
+    orderMatters: true,
+    commonMistakes: [
+      {
+        pattern: 'WHERE\\s+(?:h\\.)?status\\s*(?:<>|!=)',
+        hint: '只看 status 会把「曾经 DOWN、后来恢复」的机器（h-gw-1）也算成故障，造成误报。题目要求以每台机器最后一次心跳为准：用 ROW_NUMBER 取 rn = 1，或用 NOT EXISTS 排除存在更新心跳的记录。',
+      },
+    ],
+  },
 ]
