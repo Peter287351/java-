@@ -1,0 +1,14 @@
+{
+  "id": "mybatis",
+  "title": "MyBatis 与 MyBatis-Plus",
+  "emoji": "🗂️",
+  "stage": 3,
+  "order": 9,
+  "description": "原生 MyBatis 核心、XML 映射与动态 SQL、缓存与插件，以及 MyBatis-Plus 增强与 Spring Boot 整合",
+  "chapters": [
+    { "id": "01-core", "title": "核心架构与 SqlSession" },
+    { "id": "02-mapping", "title": "XML 映射与动态 SQL" },
+    { "id": "03-cache-plugin", "title": "缓存、插件与延迟加载" },
+    { "id": "04-plus", "title": "MyBatis-Plus 与整合实践" }
+  ]
+}

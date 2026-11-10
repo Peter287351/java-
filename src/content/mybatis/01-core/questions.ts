@@ -1,0 +1,130 @@
+import type { QuestionSpec } from '../../../types'
+
+export const questions: QuestionSpec[] = [
+  {
+    id: 'mybatis-01-core-001',
+    type: 'single',
+    difficulty: 1,
+    tags: ['SqlSession'],
+    stem: `关于 SqlSession 的生命周期，下列说法正确的是？`,
+    options: [
+      { key: 'A', text: 'SqlSession 是线程安全的，整个应用共用一个即可' },
+      { key: 'B', text: 'SqlSession 非线程安全，应在方法/请求内创建并及时关闭' },
+      { key: 'C', text: 'SqlSession 由数据库驱动创建，MyBatis 不负责关闭' },
+      { key: 'D', text: 'SqlSession 必须每次执行 SQL 后重启应用才能释放' },
+    ],
+    answers: ['B'],
+    explanation: `SqlSession 内部持有 Executor 与一级缓存，不是线程安全的；正确做法是每次请求或方法内获取、用完关闭，或交给 Spring 的 SqlSessionTemplate 管理。A 会导致多线程串数据，C 和 D 与实现不符。`,
+  },
+  {
+    id: 'mybatis-01-core-002',
+    type: 'single',
+    difficulty: 1,
+    tags: ['SqlSessionFactory'],
+    stem: `SqlSessionFactory 在应用中通常应该怎样管理？`,
+    options: [
+      { key: 'A', text: '每条 SQL 新建一个，避免配置污染' },
+      { key: 'B', text: '每个用户会话新建一个' },
+      { key: 'C', text: '应用级单例，启动时构建一次' },
+      { key: 'D', text: '交给数据库管理员手工维护' },
+    ],
+    answers: ['C'],
+    explanation: `SqlSessionFactory 解析配置与 Mapper 映射的开销大且本身线程安全，通常作为应用级单例（Spring 里就是一个 Bean）。每次新建会重复解析配置，A、B 都浪费；D 不是程序运行期概念。`,
+  },
+  {
+    id: 'mybatis-01-core-003',
+    type: 'single',
+    difficulty: 2,
+    tags: ['占位符'],
+    stem: `MyBatis 中 #{id} 与 \${{id} 最主要的区别是？`,
+    options: [
+      { key: 'A', text: '#{} 只能用于数字，${} 只能用于字符串' },
+      { key: 'B', text: '#{} 生成 PreparedStatement 的 ? 占位符，${} 直接拼接字符串' },
+      { key: 'C', text: '#{} 会开启二级缓存，${} 不会' },
+      { key: 'D', text: '两者完全等价，只是书写风格不同' },
+    ],
+    answers: ['B'],
+    explanation: `#{} 预编译并绑定参数，能防 SQL 注入；\${{} 是纯文本替换，拼用户输入会造成注入，只允许用于动态表名/排序列且要做白名单。A 与类型无关，C 与缓存无关，D 明显错误。`,
+  },
+  {
+    id: 'mybatis-01-core-004',
+    type: 'single',
+    difficulty: 2,
+    tags: ['Mapper 代理'],
+    stem: `Mapper 接口没有实现类却能直接调用，底层机制是？`,
+    options: [
+      { key: 'A', text: '编译期由 Lombok 生成实现类' },
+      { key: 'B', text: 'MyBatis 用 CGLIB 修改接口字节码' },
+      { key: 'C', text: 'JDK 动态代理生成 MapperProxy，按接口名 + 方法名定位 MappedStatement' },
+      { key: 'D', text: 'JDBC 驱动直接反射调用接口方法' },
+    ],
+    answers: ['C'],
+    explanation: `getMapper 返回 JDK 动态代理，MapperProxy 把方法调用翻译成「命名空间 + id」去查 MappedStatement 再交给 Executor。接口不能被 CGLIB 继承增强，B 错；A、D 与 MyBatis 无关。`,
+  },
+  {
+    id: 'mybatis-01-core-005',
+    type: 'multiple',
+    difficulty: 2,
+    tags: ['核心组件'],
+    stem: `关于 MyBatis 核心组件，下列说法正确的有哪些？`,
+    options: [
+      { key: 'A', text: 'SqlSessionFactory 线程安全，适合做单例' },
+      { key: 'B', text: 'Executor 负责执行 SQL 并维护缓存' },
+      { key: 'C', text: 'MappedStatement 封装一条 SQL 的配置信息' },
+      { key: 'D', text: '一级缓存是应用全局共享的，跨会话生效' },
+    ],
+    answers: ['A', 'B', 'C'],
+    explanation: `A、B、C 都是标准架构描述。D 错在作用域：一级缓存是 SqlSession（会话）级别，跨会话不共享；跨会话共享的是二级缓存，且需要额外开启与序列化支持。`,
+  },
+  {
+    id: 'mybatis-01-core-006',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['会话作用域'],
+    scenario: `同事把 SqlSession 存成了 Spring Service 的单例字段，所有方法复用它。压测时偶发「Executor was closed」和查询结果串到别的请求。`,
+    stem: `最合理且改动最小的修复是？`,
+    options: [
+      { key: 'A', text: '把 SqlSession 字段加 synchronized，保证同一时刻只有一个线程用' },
+      { key: 'B', text: '改为注入 Mapper 接口，让 Spring 的 SqlSessionTemplate 按请求管理会话' },
+      { key: 'C', text: '关掉一级缓存，会话就能安全共享' },
+      { key: 'D', text: '把连接池最大连接数调到 1，避免并发' },
+    ],
+    answers: ['B'],
+    explanation: `根因是把非线程安全的会话放进了单例。Spring 整合后应直接注入 Mapper，由 SqlSessionTemplate 在每次调用时开启/关闭会话。A 只是掩盖并发且仍可能读到脏缓存，C 关缓存不解决作用域问题，D 用限制并发掩盖 bug。`,
+  },
+  {
+    id: 'mybatis-01-core-007',
+    type: 'code',
+    difficulty: 3,
+    tags: ['预编译'],
+    stem: `读下面的 Mapper 方法，调用 findById(7L) 时发给数据库的语句形式是？
+
+~~~java
+@Select("SELECT * FROM user WHERE id = #{id}")
+User findById(@Param("id") Long id);
+~~~`,
+    options: [
+      { key: 'A', text: 'SELECT * FROM user WHERE id = 7' },
+      { key: 'B', text: 'SELECT * FROM user WHERE id = ? ，参数 7 由 PreparedStatement 绑定' },
+      { key: 'C', text: 'SELECT * FROM user WHERE id = #{id}' },
+      { key: 'D', text: 'SELECT * FROM user WHERE id = :id' },
+    ],
+    answers: ['B'],
+    explanation: `#{} 在解析阶段被替换成 JDBC 占位符 ?，运行时由 PreparedStatement.setLong 绑定 7，因此 SQL 文本里不会出现具体值。A 是字符串拼接的效果，C 是未解析的模板，D 是命名参数写法（如 Spring JDBC），都不是 MyBatis 的最终形态。`,
+  },
+  {
+    id: 'mybatis-01-core-008',
+    type: 'single',
+    difficulty: 2,
+    tags: ['@Param'],
+    stem: `Mapper 方法有多个参数时，推荐的做法是？`,
+    options: [
+      { key: 'A', text: '只能把参数拼成一个 Map，否则无法传值' },
+      { key: 'B', text: '用 @Param 给每个参数命名，在 XML 里按名字引用' },
+      { key: 'C', text: '把参数改成类的静态字段' },
+      { key: 'D', text: '把 SQL 改写成存储过程' },
+    ],
+    answers: ['B'],
+    explanation: `@Param 为每个参数建立名字，XML 里可用 #{name} 引用；不命名时只能用 param1/param2 这类位置名，可读性差且容易错。A 是可选做法但不是唯一，C、D 与参数绑定无关。`,
+  },
+]
