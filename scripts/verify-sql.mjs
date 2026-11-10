@@ -5,10 +5,10 @@
 //   4. 表结构解析 parseSchema / FROM-JOIN 解析 referencedTables
 //   5. 题库结构、常见错误正则 commonMistakes
 //   6. 全部题目参考答案在真实引擎上可执行且有数据
-import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 
 const require = createRequire(new URL('../package.json', import.meta.url))
@@ -230,6 +230,30 @@ const dashSrc = readFileSync(new URL('../src/views/DashboardView.vue', import.me
 const moduleSrc = readFileSync(new URL('../src/views/ModuleView.vue', import.meta.url), 'utf8')
 const readmeSrc = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
 const indexSrc = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
+
+const contentRoot = fileURLToPath(new URL('../src/content/', import.meta.url))
+function walk(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name)
+    return statSync(p).isDirectory() ? walk(p) : [p]
+  })
+}
+const contentFiles = walk(contentRoot)
+const moduleJsonPaths = contentFiles.filter((p) => p.endsWith('module.json'))
+const questionPaths = contentFiles.filter((p) => p.endsWith('questions.ts'))
+const moduleCount = moduleJsonPaths.length
+const chapterCount = moduleJsonPaths.reduce(
+  (n, p) => n + (JSON.parse(readFileSync(p, 'utf8')).chapters?.length ?? 0),
+  0,
+)
+const questionCount = questionPaths.reduce(
+  (n, p) => n + (readFileSync(p, 'utf8').match(/^\s+id:\s*['"]/gm) ?? []).length,
+  0,
+)
+check(
+  `内容规模 ${moduleCount} 模块 / ${chapterCount} 章 / ${questionCount} 题`,
+  moduleCount > 0 && chapterCount > 0 && questionCount > 0,
+)
 check('首页题数动态取值且无写死的 /16', dashSrc.includes('sqlExercises.length') && !/\/16\b/.test(dashSrc))
 check('模块页题数动态取值且无写死的 /16', moduleSrc.includes('sqlExercises.length') && !/\/16\b/.test(moduleSrc))
 check(
@@ -248,6 +272,12 @@ check(
   indexSrc.includes(`${exercises.length} 道手写 SQL`),
   `题库 ${exercises.length} 题`,
 )
+check('README 模块数与题库一致', readmeSrc.includes(`${moduleCount} 大模块`), `实际 ${moduleCount}`)
+check('README 章节数与题库一致', readmeSrc.includes(`${chapterCount} 个章节`), `实际 ${chapterCount}`)
+check('README 精讲题数与题库一致', readmeSrc.includes(`${questionCount} 道精讲题`), `实际 ${questionCount}`)
+check('分享描述模块数一致', indexSrc.includes(`${moduleCount} 大模块`), `实际 ${moduleCount}`)
+check('分享描述章节数一致', indexSrc.includes(`${chapterCount} 章`), `实际 ${chapterCount}`)
+check('分享描述精讲题数一致', indexSrc.includes(`${questionCount} 道精讲题`), `实际 ${questionCount}`)
 
 /* ---------- 8. 全部题目参考答案真实可执行 ---------- */
 group('真实引擎执行全部题目')
