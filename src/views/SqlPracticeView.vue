@@ -111,7 +111,15 @@ async function runCheck() {
     const expected = await runOnDataset(selectedDataset.value, selected.value.reference)
     const actual = await runOnDataset(selectedDataset.value, editorText.value)
     if (!actual.ok) {
-      result.value = { kind: 'syntax', message: explainSqlError(actual.error ?? ''), raw: actual.error ?? '' }
+      result.value = {
+        kind: 'syntax',
+        // 带上用户 SQL 与本题表结构，才能区分「表名选错」和「列名拼错」
+        message: explainSqlError(actual.error ?? '', {
+          sql: editorText.value,
+          dataset: selectedDataset.value,
+        }),
+        raw: actual.error ?? '',
+      }
       store.recordSqlAttempt(selected.value.id, false, false)
       return
     }
@@ -248,7 +256,7 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
             <summary>📋 表结构（{{ tableNames.join('、') }}）与引擎说明</summary>
             <pre class="sql-pre">{{ selectedDataset.ddl }}</pre>
             <p class="muted small" style="margin: 8px 0 0">
-              引擎说明：仅接受单条 SELECT / WITH 查询；内置 DATEDIFF(a, b) 返回相差天数；日期为 TEXT（YYYY-MM-DD）可用字符串/substr 比较；支持窗口函数、CTE 与递归 CTE。
+              引擎说明：仅接受单条 SELECT / WITH 查询；内置 DATEDIFF(a, b) 返回相差天数；日期/时间为 TEXT（YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS）可用字符串/substr 比较；支持窗口函数、CTE 与递归 CTE。
             </p>
           </details>
 
