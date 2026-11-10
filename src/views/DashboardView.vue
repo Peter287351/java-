@@ -7,6 +7,7 @@ import { useProgressStore } from '@/stores/progress'
 import { ACHIEVEMENTS, DAILY_GOAL } from '@/lib/motivation'
 import ProgressRing from '@/components/ProgressRing.vue'
 import CountUp from '@/components/CountUp.vue'
+import { sqlExercises } from '@/content/sql/exercises'
 
 const store = useProgressStore()
 
@@ -67,7 +68,7 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
           <span class="chip chip-blue">8 大模块</span>
           <span class="chip chip-blue">39 个章节</span>
           <span class="chip chip-blue">{{ totalQuestionCount }} 道精讲题</span>
-          <span class="chip chip-blue">25 道 SQL 手写</span>
+          <span class="chip chip-blue">{{ sqlExercises.length }} 道 SQL 手写</span>
           <span class="chip chip-green">完全免费</span>
         </div>
       </div>
@@ -116,7 +117,7 @@ const stageTitle = (s: 1 | 2 | 3 | 4) => STAGES.find((x) => x.stage === s)?.titl
       <div class="card fade-up">
         <h3>✍️ SQL 手写</h3>
         <p class="muted" style="margin: 6px 0 12px">
-          今日必练：{{ store.sqlPassedCount }}/16 已通过 · 沙箱真实判分
+          今日必练：{{ store.sqlPassedCount }}/{{ sqlExercises.length }} 已通过 · 沙箱真实判分
         </p>
         <router-link to="/sql"><button class="btn btn-primary">去手写 SQL</button></router-link>
       </div>

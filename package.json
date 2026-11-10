@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "validate": "node scripts/validate-content.mjs",
-    "validate:sql": "node scripts/validate-sql.mjs"
+    "validate:sql": "node scripts/validate-sql.mjs",
+    "test:sql": "node scripts/verify-sql.mjs"
   },
   "dependencies": {
     "marked": "^15.0.0",

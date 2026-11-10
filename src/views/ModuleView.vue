@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { getModule } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
 import { READY_ACCURACY } from '@/types'
+import { sqlExercises } from '@/content/sql/exercises'
 
 const props = defineProps<{ moduleId: string }>()
 const store = useProgressStore()
@@ -26,7 +27,7 @@ function statOf(qids: string[]) {
       <div style="flex: 1">
         <strong>手写 SQL 修炼场 · 每日一练</strong>
         <p class="muted small" style="margin: 2px 0 0">
-          沙箱真实执行你的 SQL，与参考答案按结果集比对判分，错了告诉你错在哪 · 已通过 {{ store.sqlPassedCount }}/16 题
+          沙箱真实执行你的 SQL，与参考答案按结果集比对判分，错了告诉你错在哪 · 已通过 {{ store.sqlPassedCount }}/{{ sqlExercises.length }} 题
         </p>
       </div>
       <button class="btn btn-primary">进入练习 →</button>
