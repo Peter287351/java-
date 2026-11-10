@@ -1,12 +1,14 @@
 import type { Chapter, KnowledgeCard, Module, ModuleMeta, QuestionSpec } from '@/types'
 
-const manifestModules = import.meta.glob('/src/content/*/module.json', { eager: true })
-const cardFiles = import.meta.glob('/src/content/*/*/cards.md', {
+// glob 用相对当前文件的路径：以 / 开头的绝对路径在 Windows 下会被拼成 c:/... 的错误路径，
+// 导致 dev 与 build 都无法解析题库文件。
+const manifestModules = import.meta.glob('../content/*/module.json', { eager: true })
+const cardFiles = import.meta.glob('../content/*/*/cards.md', {
   query: '?raw',
   import: 'default',
   eager: true,
 }) as Record<string, string>
-const questionFiles = import.meta.glob('/src/content/*/*/questions.ts', { eager: true })
+const questionFiles = import.meta.glob('../content/*/*/questions.ts', { eager: true })
 
 /** cards.md 以 `## 标题` 分隔成多张知识卡 */
 function parseCards(md: string): KnowledgeCard[] {
@@ -29,8 +31,9 @@ export const modules: Module[] = (() => {
   metas.sort((a, b) => a.order - b.order)
   return metas.map((meta) => {
     const chapters: Chapter[] = meta.chapters.map((cm) => {
-      const cardKey = `/src/content/${meta.id}/${cm.id}/cards.md`
-      const qKey = `/src/content/${meta.id}/${cm.id}/questions.ts`
+      // 与上面 glob 的相对路径保持一致，才能按文件名取到知识卡和题目
+      const cardKey = `../content/${meta.id}/${cm.id}/cards.md`
+      const qKey = `../content/${meta.id}/${cm.id}/questions.ts`
       const cards = cardKey in cardFiles ? parseCards(cardFiles[cardKey]) : []
       const questions =
         qKey in questionFiles
