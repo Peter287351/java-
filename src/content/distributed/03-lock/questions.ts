@@ -1,0 +1,130 @@
+import type { QuestionSpec } from '../../../types'
+
+export const questions: QuestionSpec[] = [
+  {
+    id: 'distributed-03-lock-001',
+    type: 'single',
+    difficulty: 1,
+    tags: ['Redis 锁'],
+    stem: `SET lock:order uuid NX EX 30 这条命令的含义是？`,
+    options: [
+      { key: 'A', text: '仅当 key 不存在时设置，并给 30 秒过期时间' },
+      { key: 'B', text: '无条件覆盖已有锁并永久保存' },
+      { key: 'C', text: '删除 30 秒前创建的锁' },
+      { key: 'D', text: '把 value 自增 30' },
+    ],
+    answers: ['A'],
+    explanation: `NX 保证互斥（只有一个客户端能设成功），EX 30 防止持有者宕机后锁不释放。B 少了互斥，C 是 DEL，D 是 INCR。`,
+  },
+  {
+    id: 'distributed-03-lock-002',
+    type: 'single',
+    difficulty: 1,
+    tags: ['过期时间'],
+    stem: `分布式锁必须设置过期时间，主要为了？`,
+    options: [
+      { key: 'A', text: '持有锁的进程崩溃后，锁仍能自动释放' },
+      { key: 'B', text: '让 Redis 自动做主从切换' },
+      { key: 'C', text: '提高 key 的读写速度' },
+      { key: 'D', text: '让锁可以被所有线程共享' },
+    ],
+    answers: ['A'],
+    explanation: `没有过期时间，进程挂掉后锁成为死锁，其他实例永远拿不到。B、C、D 与锁的互斥语义无关。`,
+  },
+  {
+    id: 'distributed-03-lock-003',
+    type: 'single',
+    difficulty: 2,
+    tags: ['原子解锁'],
+    stem: `解锁时为什么要用 Lua 脚本「先比对 value 再删除」？`,
+    options: [
+      { key: 'A', text: '因为 Redis 不支持 DEL 命令' },
+      { key: 'B', text: 'GET 与 DEL 分开执行时，期间锁可能已过期并被别人持有，直接 DEL 会误删他人的锁' },
+      { key: 'C', text: 'Lua 脚本执行速度比 DEL 快' },
+      { key: 'D', text: '为了让锁自动续期' },
+    ],
+    answers: ['B'],
+    explanation: `比对 + 删除必须原子化，否则 A 的锁过期后 B 加锁成功，A 再 DEL 就删掉了 B 的锁。A 与事实不符，C 不是主要原因，D 是看门狗的职责。`,
+  },
+  {
+    id: 'distributed-03-lock-004',
+    type: 'single',
+    difficulty: 2,
+    tags: ['看门狗'],
+    stem: `Redisson 的看门狗（watchdog）主要解决？`,
+    options: [
+      { key: 'A', text: '业务未执行完时自动延长锁的过期时间' },
+      { key: 'B', text: '自动修复 Redis 主从故障' },
+      { key: 'C', text: '把锁转移到另一个 key' },
+      { key: 'D', text: '记录每次加锁的 SQL' },
+    ],
+    answers: ['A'],
+    explanation: `看门狗在客户端仍存活且仍持有锁时定期续期，避免「业务比超时时间长」导致锁提前释放。B、C、D 都不是它做的事。`,
+  },
+  {
+    id: 'distributed-03-lock-005',
+    type: 'multiple',
+    difficulty: 2,
+    tags: ['锁方案'],
+    stem: `关于分布式锁，说法正确的有哪些？`,
+    options: [
+      { key: 'A', text: '锁的 value 应放唯一标识，用于识别持有者' },
+      { key: 'B', text: 'ZooKeeper 临时节点在会话断开后会自动删除' },
+      { key: 'C', text: '关键业务仍应有数据库唯一约束或状态机等兜底' },
+      { key: 'D', text: '只要用了分布式锁，就绝对不会出现并发重复处理' },
+    ],
+    answers: ['A', 'B', 'C'],
+    explanation: `A、B、C 正确。D 过于绝对：锁可能因主从切换、时钟、超时而失效，数据库层兜底必不可少。`,
+  },
+  {
+    id: 'distributed-03-lock-006',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['锁过期'],
+    scenario: `秒杀扣库存用 Redis 锁设了 5 秒过期，但大促时一次扣减逻辑偶尔要跑 8 秒，日志显示同一商品被两个线程同时扣减。`,
+    stem: `最贴近根因与改进的是？`,
+    options: [
+      { key: 'A', text: '把过期时间调到 1 秒，尽快释放锁' },
+      { key: 'B', text: '锁在业务结束前就过期了；引入看门狗续期、缩短临界区，并在数据库用条件更新做幂等兜底' },
+      { key: 'C', text: '给 Redis 加更多从节点' },
+      { key: 'D', text: '把日志级别改成 DEBUG' },
+    ],
+    answers: ['B'],
+    explanation: `锁超时但业务未完是典型的并发穿透。续期与缩短持锁时间是主修，数据库条件更新（如 stock > 0）是最后防线。A 加剧问题，C、D 无关。`,
+  },
+  {
+    id: 'distributed-03-lock-007',
+    type: 'code',
+    difficulty: 3,
+    tags: ['Redis 命令'],
+    stem: `两个客户端同时执行下面命令，结果是？
+
+~~~bash
+SET lock:pay A-NX-UNIQUE NX EX 30
+SET lock:pay B-NX-UNIQUE NX EX 30
+~~~`,
+    options: [
+      { key: 'A', text: '只有一个返回 OK，另一个返回 nil，锁的 value 属于成功的那个客户端' },
+      { key: 'B', text: '两个都返回 OK，后执行的覆盖 value' },
+      { key: 'C', text: '两个都返回 nil，因为 key 冲突' },
+      { key: 'D', text: 'Redis 会报语法错误' },
+    ],
+    answers: ['A'],
+    explanation: `NX 只在 key 不存在时写入：先执行者成功并持有唯一 value，后执行者因 key 已存在返回 nil。B 是无 NX 的覆盖行为，C、D 与命令语义不符。`,
+  },
+  {
+    id: 'distributed-03-lock-008',
+    type: 'single',
+    difficulty: 2,
+    tags: ['ZooKeeper 锁'],
+    stem: `用 ZooKeeper 实现分布式锁时，客户端会话断开后锁通常如何释放？`,
+    options: [
+      { key: 'A', text: '等管理员手工删除锁节点' },
+      { key: 'B', text: '客户端创建的临时节点随会话结束自动删除，等待者收到通知后重新竞争' },
+      { key: 'C', text: '由 Redis 定时任务扫描并删除' },
+      { key: 'D', text: '锁会永久保留，必须重启整个集群' },
+    ],
+    answers: ['B'],
+    explanation: `临时（EPHEMERAL）节点绑定会话，会话断开即被 ZK 自动删除，因此不需要像 Redis 锁那样依赖过期时间。A、C、D 都不符合 ZK 的会话机制。`,
+  },
+]

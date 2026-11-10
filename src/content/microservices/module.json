@@ -1,0 +1,14 @@
+{
+  "id": "microservices",
+  "title": "微服务组件",
+  "emoji": "🧩",
+  "stage": 5,
+  "order": 13,
+  "description": "注册发现、OpenFeign 与负载均衡、网关路由、熔断限流、配置中心与链路追踪",
+  "chapters": [
+    { "id": "01-discovery", "title": "服务注册与发现" },
+    { "id": "02-feign-lb", "title": "OpenFeign 与负载均衡" },
+    { "id": "03-gateway", "title": "网关、路由与过滤器" },
+    { "id": "04-resilience", "title": "容错、配置中心与链路追踪" }
+  ]
+}

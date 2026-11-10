@@ -1,0 +1,14 @@
+{
+  "id": "distributed",
+  "title": "分布式基础",
+  "emoji": "🌐",
+  "stage": 5,
+  "order": 14,
+  "description": "CAP 与 BASE、分布式 ID、分布式锁、分布式事务与幂等设计",
+  "chapters": [
+    { "id": "01-cap", "title": "CAP、BASE 与一致性" },
+    { "id": "02-id", "title": "分布式 ID" },
+    { "id": "03-lock", "title": "分布式锁" },
+    { "id": "04-transaction", "title": "分布式事务与幂等" }
+  ]
+}
