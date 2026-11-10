@@ -1,0 +1,130 @@
+import type { QuestionSpec } from '../../../types'
+
+export const questions: QuestionSpec[] = [
+  {
+    id: 'docker-01-image-container-001',
+    type: 'single',
+    difficulty: 1,
+    tags: ['镜像与容器'],
+    stem: `镜像与容器的关系，最贴切的说法是？`,
+    options: [
+      { key: 'A', text: '容器是镜像的只读模板，镜像是运行中的进程' },
+      { key: 'B', text: '镜像是分层只读模板，容器是镜像加上可写层后的运行实例' },
+      { key: 'C', text: '两者是同一种对象的不同叫法' },
+      { key: 'D', text: '一个容器只能对应一个镜像，一个镜像也只能起一个容器' },
+    ],
+    answers: ['B'],
+    explanation: `镜像类似类、容器类似实例；同一镜像可以起多个容器。A 把关系说反，C 忽略了层次，D 错在「一个镜像只能起一个容器」。`,
+  },
+  {
+    id: 'docker-01-image-container-002',
+    type: 'single',
+    difficulty: 1,
+    tags: ['docker ps'],
+    stem: `想看到包括已停止在内的所有容器，应使用？`,
+    options: [
+      { key: 'A', text: 'docker ps' },
+      { key: 'B', text: 'docker ps -a' },
+      { key: 'C', text: 'docker images' },
+      { key: 'D', text: 'docker logs' },
+    ],
+    answers: ['B'],
+    explanation: `docker ps 默认只列运行中的容器，加 -a 才包含已退出的。C 列镜像，D 看容器日志。`,
+  },
+  {
+    id: 'docker-01-image-container-003',
+    type: 'single',
+    difficulty: 2,
+    tags: ['端口映射'],
+    stem: `docker run -p 8080:80 nginx 中，8080 指的是？`,
+    options: [
+      { key: 'A', text: '容器内 Nginx 监听的端口' },
+      { key: 'B', text: '宿主机对外暴露的端口' },
+      { key: 'C', text: '镜像构建时的临时端口' },
+      { key: 'D', text: 'Docker 守护进程端口' },
+    ],
+    answers: ['B'],
+    explanation: `-p 的格式是 宿主机端口:容器端口，所以 8080 是宿主、80 是容器内 Nginx。A 说反，C、D 与端口映射无关。`,
+  },
+  {
+    id: 'docker-01-image-container-004',
+    type: 'single',
+    difficulty: 2,
+    tags: ['日志'],
+    stem: `持续查看名为 app 的容器日志，应使用？`,
+    options: [
+      { key: 'A', text: 'docker logs -f app' },
+      { key: 'B', text: 'docker images app' },
+      { key: 'C', text: 'docker rmi app' },
+      { key: 'D', text: 'docker build app' },
+    ],
+    answers: ['A'],
+    explanation: `docker logs -f 类似 tail -f，跟随容器标准输出。B、C、D 分别是列镜像、删镜像、构建镜像。`,
+  },
+  {
+    id: 'docker-01-image-container-005',
+    type: 'multiple',
+    difficulty: 2,
+    tags: ['run 参数'],
+    stem: `关于 docker run 参数，说法正确的有哪些？`,
+    options: [
+      { key: 'A', text: '-e 用于向容器注入环境变量' },
+      { key: 'B', text: '-v 用于挂载数据卷或宿主目录' },
+      { key: 'C', text: '--restart unless-stopped 可让容器随 Docker 启动自动拉起' },
+      { key: 'D', text: '-d 表示以交互模式进入容器终端' },
+    ],
+    answers: ['A', 'B', 'C'],
+    explanation: `A、B、C 正确。D 错：-d 是后台运行，交互式终端需要 -it 组合。`,
+  },
+  {
+    id: 'docker-01-image-container-006',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['容器生命周期'],
+    scenario: `用 docker run 启动自己打的 Java 镜像，docker ps -a 显示状态 Exited (0)，容器刚起来就退出了。`,
+    stem: `最常见的原因是？`,
+    options: [
+      { key: 'A', text: '镜像层数太多' },
+      { key: 'B', text: '启动脚本把 Java 进程放到了后台，容器里没有前台进程存活' },
+      { key: 'C', text: '没有给容器起 --name' },
+      { key: 'D', text: '宿主机磁盘是 SSD' },
+    ],
+    answers: ['B'],
+    explanation: `容器的生命周期绑定 PID 1，前台进程结束容器就退出；脚本里用 & 或 nohup 把 java 后台化会导致立即 Exited。A、C、D 都不影响进程是否常驻。`,
+  },
+  {
+    id: 'docker-01-image-container-007',
+    type: 'code',
+    difficulty: 3,
+    tags: ['状态判读'],
+    stem: `读下面 docker ps 的 PORTS 列，正确的访问方式是？
+
+~~~text
+CONTAINER ID   IMAGE        PORTS
+a1b2c3d4e5f6   myapp:1.0    0.0.0.0:8080->8080/tcp
+~~~`,
+    options: [
+      { key: 'A', text: '宿主机访问 127.0.0.1:8080 能到容器内 8080' },
+      { key: 'B', text: '只能访问容器内的 8080，宿主端口未开放' },
+      { key: 'C', text: '容器监听的是 80 端口' },
+      { key: 'D', text: '必须进入容器才能访问应用' },
+    ],
+    answers: ['A'],
+    explanation: `0.0.0.0:8080->8080/tcp 表示宿主所有网卡的 8080 映射到容器 8080。B 忽略了映射，C 看错端口，D 与端口映射的目的相反。`,
+  },
+  {
+    id: 'docker-01-image-container-008',
+    type: 'single',
+    difficulty: 2,
+    tags: ['docker exec'],
+    stem: `想在运行中的 app 容器里临时启动一个 shell 排查问题，应使用？`,
+    options: [
+      { key: 'A', text: 'docker exec -it app sh' },
+      { key: 'B', text: 'docker build -t app .' },
+      { key: 'C', text: 'docker rmi app' },
+      { key: 'D', text: 'docker pull app' },
+    ],
+    answers: ['A'],
+    explanation: `exec 在运行中的容器内启动新进程，-it 提供交互终端，适合临时排查。B 是构建镜像，C 删镜像，D 拉镜像，都不会进入现有容器。`,
+  },
+]

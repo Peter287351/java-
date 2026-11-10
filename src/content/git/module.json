@@ -1,0 +1,14 @@
+{
+  "id": "git",
+  "title": "Git 工作常用命令",
+  "emoji": "🔀",
+  "stage": 6,
+  "order": 10,
+  "description": "提交与查看、分支与合并冲突、远程协作与 PR、撤销与救急",
+  "chapters": [
+    { "id": "01-basics", "title": "仓库、提交与查看" },
+    { "id": "02-branch", "title": "分支、合并与冲突" },
+    { "id": "03-remote", "title": "远程协作与 PR" },
+    { "id": "04-rescue", "title": "撤销与救急" }
+  ]
+}

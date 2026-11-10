@@ -1,0 +1,14 @@
+{
+  "id": "docker",
+  "title": "Docker 常用命令",
+  "emoji": "🐳",
+  "stage": 6,
+  "order": 12,
+  "description": "镜像与容器命令、Dockerfile 与多阶段构建、数据卷与网络、Compose 编排与排障",
+  "chapters": [
+    { "id": "01-image-container", "title": "镜像、容器与常用命令" },
+    { "id": "02-dockerfile", "title": "Dockerfile 与多阶段构建" },
+    { "id": "03-volume-network", "title": "数据卷、网络与端口" },
+    { "id": "04-compose", "title": "Compose 编排与排障" }
+  ]
+}
