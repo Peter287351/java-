@@ -60,7 +60,7 @@ const mistakeHint = ref<string | null>(null)
 const result = ref<
   | { kind: 'syntax'; message: string; raw: string }
   | { kind: 'fail'; compare: CompareResult; expected: RunOutcome; actual: RunOutcome }
-  | { kind: 'pass'; compare: CompareResult; rowCount: number }
+  | { kind: 'pass'; compare: CompareResult; rowCount: number; actual: RunOutcome }
   | null
 >(null)
 const hintsShown = ref(0)
@@ -151,7 +151,7 @@ async function runCheck() {
     const cmp = compareResults(expected, actual, selected.value.orderMatters ?? false)
     if (cmp.pass) {
       const firstEver = store.recordSqlAttempt(selected.value.id, true, false)
-      result.value = { kind: 'pass', compare: cmp, rowCount: actual.rows.length }
+      result.value = { kind: 'pass', compare: cmp, rowCount: actual.rows.length, actual }
       answerRevealed.value = true
       if (firstEver) setTimeout(() => confetti(110), 250)
     } else {
@@ -370,7 +370,18 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
               ✅ 通过！结果与参考答案完全一致（{{ result.rowCount }} 行）
             </p>
             <p v-if="result.compare.note" class="chip chip-blue" style="margin-bottom: 8px">{{ result.compare.note }}</p>
-            <p class="cheer" style="margin: 0 0 10px">经验 +{{ statOf && statOf.passed === 1 ? 20 : 6 }} XP，面试手写又稳一分 💪</p>
+            <p class="muted small" style="text-align: center; margin: 4px 0 6px">你的查询结果（前 8 行）</p>
+            <table class="sql-table">
+              <thead>
+                <tr><th v-for="c in result.actual.columns" :key="c">{{ c }}</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in result.actual.rows.slice(0, 8)" :key="i">
+                  <td v-for="(c, j) in r" :key="j">{{ c }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="cheer" style="margin: 12px 0 0">经验 +{{ statOf && statOf.passed === 1 ? 20 : 6 }} XP，面试手写又稳一分 💪</p>
           </template>
 
           <!-- 结果不符 -->
