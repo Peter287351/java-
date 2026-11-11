@@ -12,6 +12,7 @@ const message = ref('')
 
 const answeredCount = computed(() => Object.keys(store.data.stats).length)
 const examCount = computed(() => store.data.exams.length)
+const activePracticeCount = computed(() => Object.keys(store.data.practiceSessions ?? {}).length)
 
 function exportData() {
   const blob = new Blob([JSON.stringify(store.data, null, 2)], { type: 'application/json' })
@@ -66,8 +67,9 @@ const doubts = computed(() =>
     <h3>数据概览</h3>
     <p class="muted small">
       共 {{ modules.length }} 个模块 / {{ totalQuestionCount }} 题 ·
-      已作答 {{ answeredCount }} 题 · 模考 {{ examCount }} 次 · 存疑 {{ store.doubtedIds.length }} 题
-      <br />进度保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
+      已作答 {{ answeredCount }} 题 · 模考 {{ examCount }} 次 · 存疑 {{ store.doubtedIds.length }} 题 ·
+      进行中的练习 {{ activePracticeCount }} 轮
+      <br />答题进度、每轮练习做到第几题、已选的答案都保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
     </p>
     <p v-if="message" class="small" style="color: var(--green)">{{ message }}</p>
   </div>
@@ -89,6 +91,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>导出 / 导入进度</h3>
+    <p class="muted small">导出的 JSON 也包含进行中的练习；导入会整体覆盖当前进度与练习记录。</p>
     <div class="question-actions">
       <button class="btn btn-primary" @click="exportData">导出进度 JSON</button>
       <button class="btn" @click="fileInput?.click()">从文件导入</button>
@@ -114,6 +117,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>危险操作</h3>
+    <p class="muted small">清空后会一并移除进行中的练习记录，操作不可恢复。</p>
     <button class="btn btn-danger" @click="resetAll">清空全部学习数据</button>
   </div>
 </template>

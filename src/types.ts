@@ -93,6 +93,33 @@ export interface ActiveExam {
   endsAt: number
 }
 
+/** 章节练习里某一题本轮的作答快照 */
+export interface PracticeAnswerRecord {
+  selected: string[]
+  correct: boolean
+  cheer: string
+}
+
+/** 进行中的一轮章节练习：按练习范围分别保存，换页面/刷新回来能接着做 */
+export interface PracticeSession {
+  /** 练习范围标识（由路由 query 规范化得到） */
+  scopeKey: string
+  ids: string[]
+  idx: number
+  /** 每题当前选择（含还没提交的草稿） */
+  drafts: string[][]
+  /** 每题作答快照，null 表示本轮还没提交 */
+  records: (PracticeAnswerRecord | null)[]
+  finished: boolean
+  summaryShown: boolean
+  lastSubmittedIdx: number
+  combo: number
+  bestCombo: number
+  /** 本轮累计获得的经验值（不依赖页面打开时的基准值） */
+  sessionXpEarned: number
+  lastAt: number
+}
+
 export interface ProgressData {
   version: 1
   stats: Record<string, QuestionStat>
@@ -103,6 +130,8 @@ export interface ProgressData {
   daily: Record<string, number>
   lastVisit: { moduleId: string; chapterId: string } | null
   activeExam: ActiveExam | null
+  /** 进行中的章节练习，按范围隔离（只保留最近若干轮） */
+  practiceSessions: Record<string, PracticeSession>
   /** 手写 SQL 练习记录 */
   sqlStats: Record<string, SqlStat>
   /** 经验值与成就（激励系统） */

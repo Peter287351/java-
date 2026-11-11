@@ -986,6 +986,95 @@ a {
   color: var(--text);
 }
 
+/* 章节练习：本轮答题卡与只读回看提示 */
+.record-strip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.record-strip-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* 题多时限定高度并滚动：自由刷题 505 题也不会把页面撑开 */
+.record-strip .palette {
+  gap: 6px;
+  margin-bottom: 0;
+  max-height: 112px;
+  overflow-y: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 140, 255, 0.5) transparent;
+}
+
+.record-strip .palette button.ok {
+  background: rgba(52, 211, 153, 0.16);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: var(--green);
+}
+
+.record-strip .palette button.bad {
+  background: rgba(251, 113, 133, 0.16);
+  border-color: rgba(251, 113, 133, 0.45);
+  color: var(--red);
+}
+
+.record-strip .palette button.pending {
+  opacity: 0.55;
+}
+
+.record-strip .palette button.pending:hover {
+  opacity: 1;
+}
+
+/* 以前做过、本轮还没做：给个蓝框，避免进去一片空白 */
+.record-strip .palette button.history {
+  border-color: rgba(124, 140, 255, 0.55);
+  color: #aab4ff;
+  opacity: 0.85;
+}
+
+/* 已经选好答案、还没提交 */
+.record-strip .palette button.picked {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* 当前所在题：绿色实心，放在最后覆盖上面的状态色 */
+.record-strip .palette button.current {
+  background: var(--green);
+  border-color: var(--green);
+  color: #0b1020;
+  font-weight: 700;
+  outline: 2px solid rgba(52, 211, 153, 0.35);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+.review-tip {
+  margin-bottom: 14px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 140, 255, 0.35);
+  background: rgba(124, 140, 255, 0.1);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .exam-nav {
   display: flex;
   justify-content: space-between;
@@ -1622,4 +1711,34 @@ summary {
     transform: scale(0.72);
     transform-origin: bottom right;
   }
+}
+
+/* 选项逐条点评（提交后展示） */
+.option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.option-line {
+  line-height: 1.6;
+}
+
+.option-note {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #f0a3ad;
+  opacity: 0.92;
+}
+
+.option-note.good {
+  color: #7ce3b1;
+}
+
+/* 未选中的非正确项：只淡化选项文字，点评小字保持清晰可读。
+   不能用 .option.dim 的整体 opacity，那会把子元素一起压暗且无法在子元素里还原。 */
+.option.dim-with-note .option-line,
+.option.dim-with-note .option-key {
+  opacity: 0.42;
 }

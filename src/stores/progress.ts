@@ -1,6 +1,6 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import type { ActiveExam, ExamRecord, ProgressData, QuestionStat } from '@/types'
+import type { ActiveExam, ExamRecord, PracticeSession, ProgressData, QuestionStat } from '@/types'
 import { dateKey } from '@/lib/utils'
 import { questionById } from '@/lib/content'
 import { ACHIEVEMENTS, DAILY_GOAL, levelOf, xpForAnswer } from '@/lib/motivation'
@@ -16,6 +16,7 @@ function defaultData(): ProgressData {
     daily: {},
     lastVisit: null,
     activeExam: null,
+    practiceSessions: {},
     sqlStats: {},
     xp: 0,
     unlocked: {},
@@ -24,12 +25,22 @@ function defaultData(): ProgressData {
   }
 }
 
+/** 兼容旧备份里没有的字段，并兜住损坏的练习会话数据 */
+function normalize(raw: ProgressData): ProgressData {
+  const merged = { ...defaultData(), ...raw }
+  const sessions = merged.practiceSessions
+  if (!sessions || typeof sessions !== 'object' || Array.isArray(sessions)) {
+    merged.practiceSessions = {}
+  }
+  return merged
+}
+
 function load(): ProgressData {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as ProgressData
-      if (parsed && parsed.version === 1) return { ...defaultData(), ...parsed }
+      if (parsed && parsed.version === 1) return normalize(parsed)
     }
   } catch {
     // 数据损坏时重置
@@ -188,12 +199,29 @@ export const useProgressStore = defineStore('progress', () => {
     data.activeExam = null
   }
 
+  /** 保存/更新一轮进行中的练习；只保留最近 24 个范围，避免本地存储无限膨胀 */
+  function savePracticeSession(session: PracticeSession) {
+    if (
+      !data.practiceSessions ||
+      typeof data.practiceSessions !== 'object' ||
+      Array.isArray(data.practiceSessions)
+    ) {
+      data.practiceSessions = {}
+    }
+    data.practiceSessions[session.scopeKey] = session
+    // 只按 key 做数量裁剪，顺便容忍旧数据里损坏的单条会话
+    const all = Object.keys(data.practiceSessions)
+      .map((key) => ({ key, at: Number(data.practiceSessions[key]?.lastAt) || 0 }))
+      .sort((a, b) => b.at - a.at)
+    for (const { key } of all.slice(24)) delete data.practiceSessions[key]
+  }
+
   function importData(json: string): string | null {
     try {
       const parsed = JSON.parse(json) as ProgressData
       if (!parsed || parsed.version !== 1 || typeof parsed.stats !== 'object')
         return '文件格式不符合进度备份要求'
-      Object.assign(data, JSON.parse(JSON.stringify({ ...defaultData(), ...parsed })))
+      Object.assign(data, JSON.parse(JSON.stringify(normalize(parsed))))
       return null
     } catch (e) {
       return '文件解析失败：' + (e instanceof Error ? e.message : String(e))
@@ -271,6 +299,7 @@ export const useProgressStore = defineStore('progress', () => {
     setExamIndex,
     finishExam,
     clearActiveExam,
+    savePracticeSession,
     importData,
     resetAll,
     stat,

@@ -7,6 +7,7 @@ import { useProgressStore } from '@/stores/progress'
 import { formatDuration, setEquals } from '@/lib/utils'
 import { confetti } from '@/lib/motivation'
 import QuestionCard from '@/components/QuestionCard.vue'
+import LearnerReport from '@/components/LearnerReport.vue'
 
 const EXAM_LEN = 20
 const EXAM_MINUTES = 25
@@ -111,6 +112,15 @@ function submitExam(auto = false) {
 }
 
 /* ---------- result ---------- */
+const wrongRefs = computed(() => {
+  const rec = lastResult.value
+  if (!rec) return []
+  return rec.questionIds
+    .filter((qid) => !setEquals(rec.answers[qid] ?? [], questionById(qid)?.q.answers ?? []))
+    .map((qid) => questionById(qid))
+    .filter((r): r is NonNullable<typeof r> => !!r)
+})
+
 function examRemark(record: { correct: number; total: number }): string {
   const r = record.total ? record.correct / record.total : 0
   if (r >= 0.9) return '🏆 出类拔萃！这水平去面试横着走'
@@ -194,6 +204,12 @@ function pct(s: { correct: number; total: number }) {
       <p class="muted">{{ lastResult.scopeLabel }} · 用时 {{ formatDuration(lastResult.durationSec) }} · 正确率 {{ Math.round((lastResult.correct / lastResult.total) * 100) }}%</p>
       <p class="cheer" style="font-size: 15px">{{ examRemark(lastResult) }}</p>
     </div>
+
+    <LearnerReport
+      :wrong="wrongRefs"
+      :total="lastResult.total"
+      :picked-by-qid="lastResult.answers"
+    />
 
     <div class="card" style="margin-top: 16px">
       <h3>考点报告</h3>
