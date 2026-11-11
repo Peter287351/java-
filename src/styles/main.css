@@ -288,6 +288,76 @@ a {
   font-size: 12px;
 }
 
+/* 顶部：本次学习计时胶囊 */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-clock {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+.nav-clock.paused {
+  opacity: 0.72;
+}
+
+.nav-clock .clock-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.nav-clock .clock-dot.live {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+  animation: clock-pulse 2s ease-in-out infinite;
+}
+
+@keyframes clock-pulse {
+  50% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.05); }
+}
+
+.nav-clock .clock-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+}
+
+.nav-clock .clock-state {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+@media (max-width: 900px) {
+  .nav-clock .clock-label,
+  .nav-clock .clock-state {
+    display: none;
+  }
+}
+
+/* 窄屏导航变竖排时，计时与等级并排居中，避免再多占一行 */
+@media (max-width: 640px) {
+  .nav-right {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 /* ========== 页脚 ========== */
 .footer {
   text-align: center;
@@ -495,6 +565,145 @@ a {
 .stat-box span {
   font-size: 12px;
   color: var(--muted);
+}
+
+/* 首页顶部：学习时间模块 */
+.study-time-card {
+  margin-bottom: 16px;
+  border-color: rgba(56, 217, 245, 0.28);
+  background:
+    radial-gradient(420px 160px at 92% 0%, rgba(56, 217, 245, 0.1), transparent 65%),
+    var(--surface);
+}
+
+.study-time-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.study-time-head h3 {
+  font-size: 17px;
+}
+
+.study-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  white-space: nowrap;
+}
+
+.study-session strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+.study-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.study-live-dot.live {
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.15);
+}
+
+.study-time-body {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(280px, 1.6fr);
+  gap: 18px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.study-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.study-numbers > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.study-numbers > div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.study-numbers strong {
+  font-size: 17px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.study-chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  height: 108px;
+}
+
+.study-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.study-day > span {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.study-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 34px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.study-bar {
+  width: 100%;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, rgba(124, 140, 255, 0.9), rgba(56, 217, 245, 0.55));
+  transition: height 0.4s ease;
+}
+
+.study-bar.today {
+  background: linear-gradient(180deg, #34d399, rgba(52, 211, 153, 0.45));
+}
+
+.study-bar.empty {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 720px) {
+  .study-time-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* 今日任务 */

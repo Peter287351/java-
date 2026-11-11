@@ -14,6 +14,7 @@ function defaultData(): ProgressData {
     doubts: {},
     exams: [],
     daily: {},
+    studySeconds: {},
     lastVisit: null,
     activeExam: null,
     practiceSessions: {},
@@ -25,12 +26,23 @@ function defaultData(): ProgressData {
   }
 }
 
-/** 兼容旧备份里没有的字段，并兜住损坏的练习会话数据 */
+/** 兼容旧备份里没有的字段，并兜住损坏的练习会话 / 学习时长数据 */
 function normalize(raw: ProgressData): ProgressData {
   const merged = { ...defaultData(), ...raw }
   const sessions = merged.practiceSessions
   if (!sessions || typeof sessions !== 'object' || Array.isArray(sessions)) {
     merged.practiceSessions = {}
+  }
+  // 旧备份没有 studySeconds；手改坏的 JSON 也可能给个数组/负数/NaN
+  const study = merged.studySeconds
+  if (!study || typeof study !== 'object' || Array.isArray(study)) {
+    merged.studySeconds = {}
+  } else {
+    const clean: Record<string, number> = {}
+    for (const [k, v] of Object.entries(study)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Number.isFinite(v) && v > 0) clean[k] = Math.floor(v)
+    }
+    merged.studySeconds = clean
   }
   return merged
 }
@@ -216,6 +228,20 @@ export const useProgressStore = defineStore('progress', () => {
     for (const { key } of all.slice(24)) delete data.practiceSessions[key]
   }
 
+  /**
+   * 批量结算有效学习秒数。entry 形如 ['2026-11-11', 15]。
+   * 由计时器每隔一段时间调用一次，避免每 1 秒就写一次 localStorage。
+   */
+  function addStudySeconds(entries: [string, number][]) {
+    if (!data.studySeconds || typeof data.studySeconds !== 'object' || Array.isArray(data.studySeconds)) {
+      data.studySeconds = {}
+    }
+    for (const [day, sec] of entries) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(sec) || sec <= 0) continue
+      data.studySeconds[day] = (data.studySeconds[day] ?? 0) + Math.floor(sec)
+    }
+  }
+
   function importData(json: string): string | null {
     try {
       const parsed = JSON.parse(json) as ProgressData
@@ -247,6 +273,28 @@ export const useProgressStore = defineStore('progress', () => {
   const doubtedIds = computed(() => Object.keys(data.doubts))
 
   const todayCount = computed(() => data.daily[dateKey()] ?? 0)
+
+  /* ---------- 学习时长 ---------- */
+  const todayStudySeconds = computed(() => data.studySeconds[dateKey()] ?? 0)
+  const totalStudySeconds = computed(() =>
+    Object.values(data.studySeconds).reduce((n, v) => n + (Number(v) || 0), 0),
+  )
+  /** 最近 n 天（含今天）的每日秒数，供首页柱状图使用 */
+  function recentStudyDays(n = 7): { day: string; label: string; seconds: number }[] {
+    const out: { day: string; label: string; seconds: number }[] = []
+    const d = new Date()
+    const week = ['日', '一', '二', '三', '四', '五', '六']
+    for (let i = n - 1; i >= 0; i--) {
+      const cur = new Date(d.getFullYear(), d.getMonth(), d.getDate() - i)
+      const key = dateKey(cur)
+      out.push({
+        day: key,
+        label: i === 0 ? '今天' : `周${week[cur.getDay()]}`,
+        seconds: data.studySeconds[key] ?? 0,
+      })
+    }
+    return out
+  }
 
   /** 连续打卡天数：今天未答题则从昨天起算（今天还没过完不判断签） */
   const streakDays = computed(() => {
@@ -300,12 +348,16 @@ export const useProgressStore = defineStore('progress', () => {
     finishExam,
     clearActiveExam,
     savePracticeSession,
+    addStudySeconds,
     importData,
     resetAll,
     stat,
     wrongIds,
     doubtedIds,
     todayCount,
+    todayStudySeconds,
+    totalStudySeconds,
+    recentStudyDays,
     streakDays,
     level,
     groupStat,

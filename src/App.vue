@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
 import MascotWidget from '@/components/MascotWidget.vue'
 import { useProgressStore } from '@/stores/progress'
+import { startStudyTimer, stopStudyTimer } from '@/lib/studyTimer'
 
 const route = useRoute()
 const store = useProgressStore()
+
+// 计时器挂在根组件：路由切换不会重启，刷新页面由 sessionStorage 续上本次会话
+onMounted(() => startStudyTimer((entries) => store.addStudySeconds(entries)))
+onUnmounted(() => stopStudyTimer())
 </script>
 
 <template>

@@ -2,9 +2,10 @@
 import { computed, ref } from 'vue'
 import { getChapter, getModule, questionById, modules, totalQuestionCount } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
-import { plainText } from '@/lib/utils'
+import { formatStudyTime, plainText } from '@/lib/utils'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { mascotHidden, setMascotHidden } from '@/lib/mascotPref'
+import { resetStudySession } from '@/lib/studyTimer'
 
 const store = useProgressStore()
 const fileInput = ref<HTMLInputElement>()
@@ -13,6 +14,8 @@ const message = ref('')
 const answeredCount = computed(() => Object.keys(store.data.stats).length)
 const examCount = computed(() => store.data.exams.length)
 const activePracticeCount = computed(() => Object.keys(store.data.practiceSessions ?? {}).length)
+const totalStudy = computed(() => formatStudyTime(store.totalStudySeconds))
+const todayStudy = computed(() => formatStudyTime(store.todayStudySeconds))
 
 function exportData() {
   const blob = new Blob([JSON.stringify(store.data, null, 2)], { type: 'application/json' })
@@ -37,6 +40,7 @@ async function onImport(e: Event) {
 function resetAll() {
   if (window.confirm('确定清空全部学习进度、错题与考试记录吗？此操作不可恢复。')) {
     store.resetAll()
+    resetStudySession()
     message.value = '已清空全部数据'
   }
 }
@@ -69,7 +73,8 @@ const doubts = computed(() =>
       共 {{ modules.length }} 个模块 / {{ totalQuestionCount }} 题 ·
       已作答 {{ answeredCount }} 题 · 模考 {{ examCount }} 次 · 存疑 {{ store.doubtedIds.length }} 题 ·
       进行中的练习 {{ activePracticeCount }} 轮
-      <br />答题进度、每轮练习做到第几题、已选的答案都保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
+      <br />今日学习 {{ todayStudy }} · 累计学习 {{ totalStudy }}（切走页面或发呆 2 分钟自动暂停计时）
+      <br />答题进度、每轮练习、学习时间都保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
     </p>
     <p v-if="message" class="small" style="color: var(--green)">{{ message }}</p>
   </div>
@@ -91,7 +96,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>导出 / 导入进度</h3>
-    <p class="muted small">导出的 JSON 也包含进行中的练习；导入会整体覆盖当前进度与练习记录。</p>
+    <p class="muted small">导出的 JSON 也包含进行中的练习与每日学习时间；导入会整体覆盖当前进度、练习记录与学习时间。</p>
     <div class="question-actions">
       <button class="btn btn-primary" @click="exportData">导出进度 JSON</button>
       <button class="btn" @click="fileInput?.click()">从文件导入</button>
@@ -117,7 +122,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>危险操作</h3>
-    <p class="muted small">清空后会一并移除进行中的练习记录，操作不可恢复。</p>
+    <p class="muted small">清空后会一并移除进行中的练习记录与全部学习时间，操作不可恢复；本次会话计时会重新开始。</p>
     <button class="btn btn-danger" @click="resetAll">清空全部学习数据</button>
   </div>
 </template>

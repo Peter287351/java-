@@ -31,6 +31,27 @@ export function formatDateTime(ts: number): string {
   return new Date(ts).toLocaleString('zh-CN', { hour12: false })
 }
 
+/** 计时器用：不足 1 小时显示 mm:ss，超过显示 h:mm:ss */
+export function formatClock(total: number): string {
+  const s = Math.max(0, Math.floor(total))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+}
+
+/** 统计卡片用：2 小时 15 分 / 45 分钟 / 42 秒 */
+export function formatStudyTime(total: number): string {
+  const s = Math.max(0, Math.floor(total))
+  if (s < 60) return `${s} 秒`
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h > 0) return m > 0 ? `${h} 小时 ${m} 分` : `${h} 小时`
+  return `${m} 分钟`
+}
+
 /** 把 Markdown 题干压成一行纯文本用于列表预览 */
 export function plainText(md: string, limit = 90): string {
   const t = md

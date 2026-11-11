@@ -7,6 +7,7 @@ import { useProgressStore } from '@/stores/progress'
 import { ACHIEVEMENTS, DAILY_GOAL } from '@/lib/motivation'
 import ProgressRing from '@/components/ProgressRing.vue'
 import CountUp from '@/components/CountUp.vue'
+import StudyTimeCard from '@/components/StudyTimeCard.vue'
 import { sqlExercises } from '@/content/sql/exercises'
 
 const store = useProgressStore()
@@ -41,6 +42,7 @@ const continueTask = computed(() => {
 
 const stageTitle = (s: 1 | 2 | 3 | 4 | 5 | 6) => STAGES.find((x) => x.stage === s)?.title ?? ''
 const chapterCount = computed(() => modules.reduce((n, m) => n + m.chapters.length, 0))
+
 </script>
 
 <template>
@@ -79,6 +81,9 @@ const chapterCount = computed(() => modules.reduce((n, m) => n + m.chapters.leng
         <div class="stat-box"><strong><CountUp :value="totalDone" />/{{ totalQuestionCount }}</strong><span>累计已掌握</span></div>
       </div>
     </section>
+
+    <!-- 学习时间（独立组件：每秒刷新的计时不会带动整个首页重渲染） -->
+    <StudyTimeCard />
 
     <!-- 等级与每日目标 -->
     <div class="today-tasks stagger">

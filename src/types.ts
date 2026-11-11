@@ -128,6 +128,8 @@ export interface ProgressData {
   exams: ExamRecord[]
   /** 'YYYY-MM-DD' → 当日答题数 */
   daily: Record<string, number>
+  /** 'YYYY-MM-DD' → 当日有效学习秒数（页面在前台且有操作才计入） */
+  studySeconds: Record<string, number>
   lastVisit: { moduleId: string; chapterId: string } | null
   activeExam: ActiveExam | null
   /** 进行中的章节练习，按范围隔离（只保留最近若干轮） */

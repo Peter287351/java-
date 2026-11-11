@@ -12,6 +12,7 @@ import { sqlDatasets } from '@/content/sql/datasets'
 import { sqlExercises } from '@/content/sql/exercises'
 import { useProgressStore } from '@/stores/progress'
 import { confetti } from '@/lib/motivation'
+import { buildSqlBlueprint } from '@/lib/sqlBlueprint'
 
 const route = useRoute()
 const store = useProgressStore()
@@ -67,12 +68,36 @@ const answerRevealed = ref(false)
 
 const statOf = computed(() => store.data.sqlStats[selected.value.id])
 
+/* ---------- 四步拆解：固定口诀 + 本题信号，默认不剧透答案 ---------- */
+const blueprint = computed(() => buildSqlBlueprint(selected.value))
+const blueprintOpen = ref(false)
+const skeletonCopied = ref(false)
+
 watch(selectedId, () => {
   editorText.value = ''
   result.value = null
   hintsShown.value = 0
+  blueprintOpen.value = false
+  skeletonCopied.value = false
   answerRevealed.value = statOf.value?.viewedAnswer ?? false
 })
+
+async function copySkeleton() {
+  // 只复制到剪贴板：占位符不是合法 SQL，塞进编辑器会让判分直接报错
+  const text = '-- 四步骨架：照着填，写完删掉注释再运行\n' + blueprint.value.skeleton + '\n'
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    ta.remove()
+  }
+  skeletonCopied.value = true
+  setTimeout(() => (skeletonCopied.value = false), 2200)
+}
 
 onMounted(async () => {
   // 预热引擎：提前加载 WASM 并跑通最小查询
@@ -251,6 +276,45 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           </div>
           <h2 style="margin: 4px 0 10px; font-size: 19px">{{ selected.title }}</h2>
           <p style="margin: 0 0 12px; line-height: 1.8">{{ selected.stem }}</p>
+
+          <!-- 四步拆解：口诀每道题都一样，靠重复练出「看到题就知道往哪想」 -->
+          <div class="sql-blueprint">
+            <div class="bp-head">
+              <strong>🧠 四步拆解 · 先自己想，再看提示</strong>
+              <span class="muted small">口诀固定不变，每题都过一遍，慢慢就成肌肉记忆</span>
+            </div>
+            <div class="bp-grid">
+              <div
+                v-for="s in blueprint.steps"
+                :key="s.key"
+                class="bp-step"
+                :class="{ mutedStep: !s.used }"
+              >
+                <div class="bp-step-top">
+                  <span class="bp-no">{{ s.no }}</span>
+                  <strong>{{ s.title }}</strong>
+                  <span v-if="!s.used" class="chip" style="padding: 0 7px; font-size: 11px">本题不用</span>
+                </div>
+                <p class="bp-mnemonic">{{ s.mnemonic }}</p>
+                <p v-if="blueprintOpen" class="bp-guide">{{ s.guide }}</p>
+                <p v-if="blueprintOpen && s.used" class="bp-signal">🎯 本题：{{ s.signal }}</p>
+              </div>
+            </div>
+            <div class="bp-actions">
+              <button class="btn" style="padding: 4px 12px; font-size: 12px" @click="blueprintOpen = !blueprintOpen">
+                {{ blueprintOpen ? '收起思路提示 ↑' : '展开写法指导与本题信号 ↓' }}
+              </button>
+              <button class="btn" style="padding: 4px 12px; font-size: 12px" @click="copySkeleton">
+                {{ skeletonCopied ? '骨架已复制 ✓' : '复制空白 SQL 骨架' }}
+              </button>
+            </div>
+            <p v-if="blueprintOpen" class="bp-note muted small">
+              提示只讲「往哪想」，不告诉你具体表名、字段和条件值；写完用下面 4 个问题自查：
+            </p>
+            <ol v-if="blueprintOpen" class="bp-checklist">
+              <li v-for="(c, i) in blueprint.checklist" :key="i">{{ c }}</li>
+            </ol>
+          </div>
 
           <details class="schema-details">
             <summary>📋 表结构（{{ tableNames.join('、') }}）与引擎说明</summary>
@@ -453,6 +517,101 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
 
 .schema-details summary {
   font-size: 13px;
+}
+
+/* 四步拆解提醒 */
+.sql-blueprint {
+  border: 1px solid rgba(124, 140, 255, 0.32);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0 14px;
+  background:
+    radial-gradient(320px 120px at 95% 0%, rgba(124, 140, 255, 0.09), transparent 65%),
+    var(--surface);
+}
+
+.bp-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.bp-step {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-strong);
+}
+
+.bp-step.mutedStep {
+  opacity: 0.55;
+}
+
+.bp-step-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.bp-no {
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.bp-mnemonic {
+  margin: 7px 0 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.bp-guide {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.bp-signal {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #b7c1ff;
+}
+
+.bp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bp-note {
+  margin: 10px 0 4px;
+}
+
+.bp-checklist {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .bp-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .sql-compare {
