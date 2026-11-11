@@ -1,0 +1,13 @@
+{
+  "id": "arch-practice",
+  "title": "架构选型与工程实践",
+  "emoji": "🏗️",
+  "stage": 5,
+  "order": 17,
+  "description": "消息队列、设计模式与工程质量、按真实约束选技术栈——把「会不会用」升级为「该不该用」",
+  "chapters": [
+    { "id": "01-mq", "title": "消息队列" },
+    { "id": "02-engineering", "title": "设计模式与工程质量" },
+    { "id": "03-scenario", "title": "真实场景：技术栈与架构选型" }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "cs-foundation",
+  "title": "计算机基础补强",
+  "emoji": "🧱",
+  "stage": 1,
+  "order": 16,
+  "description": "JVM 内存与 GC、Java 并发、HTTP/TCP 与操作系统——面试高频但容易被业务开发忽略的地基",
+  "chapters": [
+    { "id": "01-jvm", "title": "JVM 内存与 GC" },
+    { "id": "02-juc", "title": "Java 并发与 JUC" },
+    { "id": "03-network", "title": "HTTP / TCP 与操作系统" }
+  ]
+}
