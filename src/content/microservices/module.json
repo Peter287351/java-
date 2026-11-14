@@ -4,11 +4,12 @@
   "emoji": "🧩",
   "stage": 5,
   "order": 13,
-  "description": "注册发现、OpenFeign 与负载均衡、网关路由、熔断限流、配置中心与链路追踪",
+  "description": "注册发现、OpenFeign 与负载均衡、网关路由、容错与链路追踪，再进阶到限流算法、分布式限流与灰度交付",
   "chapters": [
     { "id": "01-discovery", "title": "服务注册与发现" },
     { "id": "02-feign-lb", "title": "OpenFeign 与负载均衡" },
     { "id": "03-gateway", "title": "网关、路由与过滤器" },
-    { "id": "04-resilience", "title": "容错、配置中心与链路追踪" }
+    { "id": "04-resilience", "title": "容错、配置中心与链路追踪" },
+    { "id": "05-traffic", "title": "流量治理与高可用交付" }
   ]
 }
