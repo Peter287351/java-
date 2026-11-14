@@ -188,6 +188,32 @@ export const useProgressStore = defineStore('progress', () => {
     () => Object.values(data.sqlStats).filter((s) => s.passed > 0).length,
   )
 
+  /**
+   * 保存一次成功的 SQL 解法（仅在通过时调用）。
+   * 按 SQL 文本去重：同一段写法只记一条（刷新其通过时间）；不同写法累加。
+   * @param match ref=与参考答案一致 / alt=命中官方备选 / own=用户自创独特写法
+   */
+  function saveSqlSolution(exId: string, sql: string, match: 'ref' | 'alt' | 'own') {
+    const s = data.sqlStats[exId] ?? { passed: 0, attempts: 0, viewedAnswer: false, lastAt: 0 }
+    s.lastSolution = sql
+    const list = s.solutions ?? (s.solutions = [])
+    const trimmed = sql.trim()
+    const existing = list.find((r) => r.sql.trim() === trimmed)
+    if (existing) {
+      // 同一写法再次通过：更新分类与时间，不新增条目
+      existing.match = match
+      existing.at = Date.now()
+    } else {
+      list.push({ sql, at: Date.now(), match })
+    }
+    // 最多保留最近 12 条不同写法，避免本地存储无限膨胀
+    if (list.length > 12) {
+      list.sort((a, b) => b.at - a.at)
+      list.length = 12
+    }
+    data.sqlStats[exId] = s
+  }
+
   function startExam(active: ActiveExam) {
     data.activeExam = active
   }
@@ -336,6 +362,7 @@ export const useProgressStore = defineStore('progress', () => {
     toasts,
     recordAnswer,
     recordSqlAttempt,
+    saveSqlSolution,
     sqlPassedCount,
     checkProgressAchievements,
     markDoubt,

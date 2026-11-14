@@ -146,11 +146,25 @@ export interface ProgressData {
 
 /* ---------- 手写 SQL 练习 ---------- */
 
+/** 单张表的中文名 + 字段中文注释 */
+export interface SqlTableMeta {
+  /** 表名（需与 ddl 中 CREATE TABLE 名称一致） */
+  name: string
+  /** 表中文名，如「员工表」 */
+  cn: string
+  /** 列中文注释，顺序与 ddl 中列定义顺序一致 */
+  columns: { name: string; cn: string }[]
+}
+
 export interface SqlDataset {
   id: string
   name: string
   /** 建表 + 初始化数据（多语句） */
   ddl: string
+  /** 每张表的中文名与字段注释，用于把原始 DDL 渲染成可视化表格 */
+  tables: SqlTableMeta[]
+  /** 表与表之间的关联说明（面向新手的白话），可选 */
+  relations?: string[]
 }
 
 export interface SqlExercise {
@@ -179,7 +193,24 @@ export interface SqlStat {
   attempts: number
   viewedAnswer: boolean
   lastAt: number
+  /** 最近一次通过的 SQL（用于快速回看） */
+  lastSolution?: string
+  /** 成功解法历史：按 SQL 文本去重，最多保留若干条；记录你与参考答案「写法是否一致」 */
+  solutions?: SqlSolutionRecord[]
 }
+
+/** 一次成功解法的记录 */
+export interface SqlSolutionRecord {
+  /** 用户通过的 SQL 文本 */
+  sql: string
+  /** 通过时间（毫秒时间戳） */
+  at: number
+  /** 该写法与参考答案的关系：ref=与参考答案一致，alt=命中官方备选解法，own=你自创的独特写法 */
+  match: SqlSolutionMatch
+}
+
+/** 成功写法与参考答案的关系 */
+export type SqlSolutionMatch = 'ref' | 'alt' | 'own'
 
 export const STAGES: { stage: 1 | 2 | 3 | 4 | 5 | 6; title: string }[] = [
   { stage: 1, title: '语言地基' },
