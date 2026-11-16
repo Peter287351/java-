@@ -11,7 +11,7 @@ import {
 import { sqlDatasets } from '@/content/sql/datasets'
 import { sqlExercises } from '@/content/sql/exercises'
 import { useProgressStore } from '@/stores/progress'
-import type { SqlSolutionMatch } from '@/types'
+import type { SqlExercise, SqlSolutionMatch } from '@/types'
 import { confetti } from '@/lib/motivation'
 import { buildSqlBlueprint } from '@/lib/sqlBlueprint'
 import { parseDataset } from '@/lib/schemaView'
@@ -49,13 +49,13 @@ interface TrainingQueue {
   ids: string[]
   index: number
   label: string
-  kind: 'stage' | 'tag' | 'final'
+  kind: 'stage' | 'tag' | 'final' | 'focus'
   /** 综合训练：每题「首次运行检查」是否通过，后续重试不覆盖 */
   firstTry?: Record<string, boolean>
 }
 const queue = ref<TrainingQueue | null>(null)
 
-type PracticeMode = 'free' | 'path' | 'final'
+type PracticeMode = 'free' | 'path' | 'final' | 'focus'
 const mode = ref<PracticeMode>('free')
 
 const activeId = computed(() =>
@@ -188,6 +188,42 @@ function pick(id: string) {
 function pickDaily() {
   mode.value = 'free'
   pick(dailyEx.value.id)
+}
+
+/* ---------- 重点标记：每题都能标星，统一收进「⭐ 重点题」清单 ---------- */
+/** 只保留题库里仍存在的题：旧备份里若含已下架的题 id，列表也不会报错或显示空白 */
+const focusList = computed(() => {
+  const out: { id: string; ex: SqlExercise; at: number }[] = []
+  for (const id of store.focusedSqlIds) {
+    const ex = exMap.get(id)
+    if (ex) out.push({ id, ex, at: store.data.sqlFocused[id] ?? 0 })
+  }
+  return out
+})
+const focusPassedCount = computed(
+  () => focusList.value.filter((item) => (store.data.sqlStats[item.id]?.passed ?? 0) > 0).length,
+)
+const isCurrentFocused = computed(() => store.isSqlFocused(activeId.value))
+
+function toggleCurrentFocus() {
+  store.toggleSqlFocus(activeId.value)
+}
+
+function removeFocus(id: string) {
+  store.unmarkSqlFocus(id)
+}
+
+/** 只练重点题：复用现有训练队列，行为与标签闯关一致（不记「首次写对」成绩） */
+function startFocusTraining() {
+  const ids = focusList.value.map((item) => item.id)
+  if (!ids.length) return
+  mode.value = 'focus'
+  startQueue(ids, '⭐ 重点题训练', 'focus')
+}
+
+function formatFocusTime(at: number): string {
+  if (!Number.isFinite(at) || at <= 0) return '—'
+  return new Date(at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
 }
 
 watch(
@@ -448,6 +484,7 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
       <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
         <span class="daily-flame">📅 每日必练</span>
         <strong>{{ dailyEx.title }}</strong>
+        <span v-if="store.isSqlFocused(dailyEx.id)" title="已标为重点">⭐</span>
         <span class="chip">{{ DIFF_LABEL[dailyEx.difficulty] }}</span>
         <span class="chip" :class="statusChip(dailyEx.id).cls || 'chip-blue'">
           {{ statusChip(dailyEx.id).text || '今日待完成' }}
@@ -458,7 +495,7 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
       </div>
     </div>
 
-    <!-- 三种练习方式：自由练 / 按标签循序渐进 / 全部通关后的综合训练 -->
+    <!-- 四种练习方式：自由练 / 按标签循序渐进 / 综合训练 / 重点题复习 -->
     <div class="mode-tabs card">
       <button class="mode-tab" :class="{ on: mode === 'free' }" @click="mode = 'free'; exitTraining()">
         📋 自由练习
@@ -469,6 +506,10 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
       <button class="mode-tab" :class="{ on: mode === 'final' }" @click="mode = 'final'; exitTraining()">
         🏁 综合训练
         <span v-if="!overall.finalUnlocked" class="mode-lock">🔒</span>
+      </button>
+      <button class="mode-tab" :class="{ on: mode === 'focus' }" @click="mode = 'focus'; exitTraining()">
+        ⭐ 重点题
+        <span v-if="focusList.length" class="focus-tab-count">{{ focusList.length }}</span>
       </button>
       <span class="muted small mode-progress">
         已通过 {{ overall.passed }}/{{ overall.total }} 题 · 达标 {{ overall.masteredStages }}/{{ SQL_STAGES.length }} 关 ·
@@ -497,8 +538,9 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
                 on: i === queue.index,
                 ok: store.data.sqlStats[qid]?.passed > 0,
                 bad: queue.kind === 'final' && queue.firstTry?.[qid] === false,
+                focus: store.isSqlFocused(qid),
               }"
-              :title="exMap.get(qid)?.title"
+              :title="(store.isSqlFocused(qid) ? '⭐ ' : '') + (exMap.get(qid)?.title ?? '')"
               @click="goToQueue(i)"
             >
               {{ i + 1 }}
@@ -533,6 +575,7 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           >
             <span class="sql-item-title">
               <span v-if="ex.id === dailyEx.id" title="今日必练">📅</span>
+              <span v-if="store.isSqlFocused(ex.id)" title="已标为重点">⭐</span>
               {{ ex.title }}
             </span>
             <span class="sql-item-meta">
@@ -584,7 +627,10 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
                   class="stage-q"
                   @click="pick(q.id)"
                 >
-                  <span>{{ i + 1 }}. {{ q.title }}</span>
+                  <span>
+                    {{ i + 1 }}. {{ q.title }}
+                    <span v-if="store.isSqlFocused(q.id)" title="已标为重点">⭐</span>
+                  </span>
                   <span class="chip" :class="statusChip(q.id).cls" style="padding: 0 7px">{{ statusChip(q.id).text || '未做' }}</span>
                 </button>
               </div>
@@ -600,8 +646,52 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           </div>
         </template>
 
+        <!-- 重点题清单：所有标星题目集中复习，可跳题 / 取消标记 / 只练重点 -->
+        <template v-else-if="mode === 'focus'">
+          <div class="queue-head">
+            <strong>⭐ 我的重点题</strong>
+            <span class="chip" :class="focusList.length ? 'chip-blue' : ''">{{ focusList.length }} 题</span>
+          </div>
+          <p class="muted small" style="margin: 0 0 10px">
+            在题干右上角点「☆ 标为重点」，题目就收进这里；点题目直接跳过去练，清单不会跳走。
+          </p>
+          <div v-if="!focusList.length" class="focus-empty">
+            <p style="font-size: 28px; margin: 0 0 6px">⭐</p>
+            <p class="muted small" style="margin: 0 0 10px">
+              还没有重点题。遇到想反复练的题，点一下「标为重点」就能收进来。
+            </p>
+            <button class="btn btn-primary" @click="mode = 'free'; exitTraining()">去题目列表 →</button>
+          </div>
+          <template v-else>
+            <p class="muted small" style="margin: 0 0 8px">
+              共 {{ focusList.length }} 题 · 已通过 {{ focusPassedCount }} 题 · 按标记时间从新到旧
+            </p>
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px" @click="startFocusTraining()">
+              🎯 只练这些重点题（{{ focusList.length }} 题）→
+            </button>
+            <div
+              v-for="(item, i) in focusList"
+              :key="item.id"
+              class="focus-item"
+              :class="{ active: item.id === activeId }"
+            >
+              <button class="focus-item-main" @click="pick(item.id)">
+                <span class="focus-item-title">{{ i + 1 }}. {{ item.ex.title }}</span>
+                <span class="focus-item-meta">
+                  <span class="chip" style="padding: 0 8px">{{ DIFF_LABEL[item.ex.difficulty] }}</span>
+                  <span class="chip" :class="statusChip(item.id).cls" style="padding: 0 8px">
+                    {{ statusChip(item.id).text || '未做' }}
+                  </span>
+                </span>
+                <span class="muted small">标记于 {{ formatFocusTime(item.at) }}</span>
+              </button>
+              <button class="focus-remove" title="取消重点标记" aria-label="取消重点标记" @click="removeFocus(item.id)">×</button>
+            </div>
+          </template>
+        </template>
+
         <!-- 综合训练：全部关卡达标后解锁 -->
-        <template v-else>
+        <template v-else-if="mode === 'final'">
           <div class="final-card" :class="{ unlocked: overall.finalUnlocked }">
             <p style="font-size: 30px; margin: 0">{{ overall.finalUnlocked ? '🏁' : '🔒' }}</p>
             <h3 style="margin: 6px 0">综合训练 · 结业卷</h3>
@@ -672,7 +762,8 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
           <div class="question-actions" style="margin-top: 10px">
             <button class="btn" @click="goToQueue(0)">从头再练</button>
             <button class="btn" @click="exitTraining()">退出训练</button>
-            <button v-if="queue.kind === 'final'" class="btn btn-primary" @click="reshuffleFinal()">换一套综合卷 →</button>
+            <button v-if="queue.kind === 'focus'" class="btn btn-primary" @click="exitTraining()">返回重点题清单 →</button>
+            <button v-else-if="queue.kind === 'final'" class="btn btn-primary" @click="reshuffleFinal()">换一套综合卷 →</button>
             <button v-else class="btn btn-primary" @click="mode = 'path'; exitTraining()">返回关卡列表 →</button>
           </div>
         </div>
@@ -684,6 +775,16 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
             <span class="chip chip-blue">{{ DIFF_LABEL[selected.difficulty] }}</span>
             <span v-for="t in selected.tags" :key="t" class="chip chip-tag">#{{ t }}</span>
             <span class="chip">{{ selectedDataset.name }}</span>
+            <!-- 收藏（重点标记）贴在题目顶部：和难度/标签同一行，不新增横幅、不跳转 -->
+            <button
+              class="btn focus-toggle"
+              :class="{ 'focus-toggle-on': isCurrentFocused }"
+              :aria-pressed="isCurrentFocused"
+              :title="isCurrentFocused ? '再点一次取消重点标记' : '把这道题收进「⭐ 重点题」清单'"
+              @click="toggleCurrentFocus()"
+            >
+              {{ isCurrentFocused ? '⭐ 取消重点' : '☆ 标为重点' }}
+            </button>
           </div>
           <h2 style="margin: 4px 0 10px; font-size: 19px">{{ selected.title }}</h2>
           <p style="margin: 0 0 12px; line-height: 1.8">{{ selected.stem }}</p>
@@ -1605,6 +1706,120 @@ const DIFF_LABEL: Record<number, string> = { 1: '入门', 2: '进阶', 3: '实�
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+/* ---------- 重点标记：按钮贴在题目顶部标签行，滚动时也不消失 ---------- */
+/* 宽屏左右分栏时题目栏自身滚动，让标签行贴顶，收藏按钮就不会被滚走 */
+.sql-split.is-split .question-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  /* 卡片底色是半透明叠加，这里铺一层不透明底，滚动的内容不会从按钮后面透出来 */
+  background: linear-gradient(var(--surface), var(--surface)), var(--bg);
+  padding: 4px 0 12px;
+  margin-bottom: 0;
+}
+
+/* 推到标签行最右边，正是题目右上角，不额外占一行 */
+.question-head .focus-toggle {
+  margin-left: auto;
+}
+
+.focus-toggle {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #facc15;
+}
+
+.focus-toggle-on {
+  border-color: rgba(250, 204, 21, 0.6);
+  background: rgba(250, 204, 21, 0.14);
+  color: #facc15;
+}
+
+.focus-tab-count {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.2);
+  color: inherit;
+  font-size: 11px;
+  line-height: 17px;
+  text-align: center;
+}
+
+.focus-empty {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 20px 14px;
+  text-align: center;
+}
+
+.focus-item {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.focus-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.focus-item-main:hover {
+  border-color: var(--primary);
+}
+
+.focus-item.active .focus-item-main {
+  border-color: var(--primary);
+  background: linear-gradient(120deg, rgba(124, 140, 255, 0.14), rgba(56, 217, 245, 0.08));
+}
+
+.focus-item-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.focus-item-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.focus-remove {
+  flex: 0 0 30px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.focus-remove:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.queue-num.focus {
+  box-shadow: inset 0 -3px 0 rgba(250, 204, 21, 0.85);
 }
 
 @media (max-width: 860px) {

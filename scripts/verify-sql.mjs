@@ -279,6 +279,31 @@ check('分享描述模块数一致', indexSrc.includes(`${moduleCount} 大模块
 check('分享描述章节数一致', indexSrc.includes(`${chapterCount} 章`), `实际 ${chapterCount}`)
 check('分享描述精讲题数一致', indexSrc.includes(`${questionCount} 道精讲题`), `实际 ${questionCount}`)
 
+/* 重点标记功能的关键连线：数据字段 / 旧备份清洗 / store 动作 / 页面按钮与展示模块 */
+const typesSrc = readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8')
+const progressSrc = readFileSync(new URL('../src/stores/progress.ts', import.meta.url), 'utf8')
+const sqlViewSrc = readFileSync(new URL('../src/views/SqlPracticeView.vue', import.meta.url), 'utf8')
+check(
+  '重点标记字段与旧备份清洗齐全',
+  typesSrc.includes('sqlFocused: Record<string, number>') &&
+    progressSrc.includes('sqlFocused: {}') &&
+    progressSrc.includes('merged.sqlFocused = clean'),
+)
+check(
+  '重点标记切换 / 取消 / 排序 getter 齐全',
+  progressSrc.includes('function toggleSqlFocus') &&
+    progressSrc.includes('function unmarkSqlFocus') &&
+    progressSrc.includes('const focusedSqlIds'),
+)
+check(
+  'SQL 页面有标星按钮与重点题展示模块',
+  sqlViewSrc.includes('toggleCurrentFocus()') &&
+    sqlViewSrc.includes("mode === 'focus'") &&
+    sqlViewSrc.includes('startFocusTraining()') &&
+    sqlViewSrc.includes('focus-item-main'),
+)
+check('README 已同步重点标记说明', readmeSrc.includes('⭐ 重点题'))
+
 /* ---------- 8. 全部题目参考答案真实可执行 ---------- */
 group('真实引擎执行全部题目')
 const refFailures = []

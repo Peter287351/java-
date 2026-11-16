@@ -19,6 +19,7 @@ function defaultData(): ProgressData {
     activeExam: null,
     practiceSessions: {},
     sqlStats: {},
+    sqlFocused: {},
     xp: 0,
     unlocked: {},
     bestCombo: 0,
@@ -26,7 +27,7 @@ function defaultData(): ProgressData {
   }
 }
 
-/** 兼容旧备份里没有的字段，并兜住损坏的练习会话 / 学习时长数据 */
+/** 兼容旧备份里没有的字段，并兜住损坏的练习会话 / 学习时长 / 重点标记数据 */
 function normalize(raw: ProgressData): ProgressData {
   const merged = { ...defaultData(), ...raw }
   const sessions = merged.practiceSessions
@@ -43,6 +44,19 @@ function normalize(raw: ProgressData): ProgressData {
       if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Number.isFinite(v) && v > 0) clean[k] = Math.floor(v)
     }
     merged.studySeconds = clean
+  }
+  // 旧备份没有 sqlFocused；手改坏的 JSON 也可能给数组 / 字符串 / 负数，统一清洗成合法时间戳
+  const focused = merged.sqlFocused
+  if (!focused || typeof focused !== 'object' || Array.isArray(focused)) {
+    merged.sqlFocused = {}
+  } else {
+    const clean: Record<string, number> = {}
+    for (const [k, v] of Object.entries(focused)) {
+      if (typeof k === 'string' && typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+        clean[k] = Math.floor(v)
+      }
+    }
+    merged.sqlFocused = clean
   }
   return merged
 }
@@ -156,6 +170,24 @@ export const useProgressStore = defineStore('progress', () => {
   function toggleDoubt(qid: string) {
     if (qid in data.doubts) unmarkDoubt(qid)
     else markDoubt(qid)
+  }
+
+  /** 导入坏数据 / 手改 localStorage 后，也保证重点标记容器是个可写对象 */
+  function ensureSqlFocused(): Record<string, number> {
+    const f = data.sqlFocused
+    if (!f || typeof f !== 'object' || Array.isArray(f)) data.sqlFocused = {}
+    return data.sqlFocused
+  }
+
+  /** 手写 SQL 重点标记：点一下标记、再点一下取消；时间戳用于重点题清单排序 */
+  function toggleSqlFocus(exId: string) {
+    const focused = ensureSqlFocused()
+    if (exId in focused) delete focused[exId]
+    else focused[exId] = Date.now()
+  }
+
+  function unmarkSqlFocus(exId: string) {
+    delete ensureSqlFocused()[exId]
   }
 
   function setLastVisit(moduleId: string, chapterId: string) {
@@ -298,6 +330,18 @@ export const useProgressStore = defineStore('progress', () => {
 
   const doubtedIds = computed(() => Object.keys(data.doubts))
 
+  /** 重点标记的 SQL 题 id，按标记时间从新到旧 */
+  const focusedSqlIds = computed(() => {
+    const f = data.sqlFocused
+    if (!f || typeof f !== 'object' || Array.isArray(f)) return []
+    return Object.keys(f).sort((a, b) => (Number(f[b]) || 0) - (Number(f[a]) || 0))
+  })
+
+  function isSqlFocused(exId: string): boolean {
+    const f = data.sqlFocused
+    return !!f && typeof f === 'object' && !Array.isArray(f) && exId in f
+  }
+
   const todayCount = computed(() => data.daily[dateKey()] ?? 0)
 
   /* ---------- 学习时长 ---------- */
@@ -368,6 +412,9 @@ export const useProgressStore = defineStore('progress', () => {
     markDoubt,
     unmarkDoubt,
     toggleDoubt,
+    toggleSqlFocus,
+    unmarkSqlFocus,
+    isSqlFocused,
     setLastVisit,
     startExam,
     saveExamAnswer,
@@ -381,6 +428,7 @@ export const useProgressStore = defineStore('progress', () => {
     stat,
     wrongIds,
     doubtedIds,
+    focusedSqlIds,
     todayCount,
     todayStudySeconds,
     totalStudySeconds,

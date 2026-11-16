@@ -117,6 +117,12 @@ export interface PracticeSession {
   bestCombo: number
   /** 本轮累计获得的经验值（不依赖页面打开时的基准值） */
   sessionXpEarned: number
+  /** 重刷错题前的整轮快照：订正结束后把结果并回这里，小结按整轮总记录统计 */
+  retryOrigin?: {
+    ids: string[]
+    drafts: string[][]
+    records: (PracticeAnswerRecord | null)[]
+  }
   lastAt: number
 }
 
@@ -136,6 +142,8 @@ export interface ProgressData {
   practiceSessions: Record<string, PracticeSession>
   /** 手写 SQL 练习记录 */
   sqlStats: Record<string, SqlStat>
+  /** 手写 SQL 重点标记：题目 id → 标记时间（毫秒），供重点题清单按时间倒序展示 */
+  sqlFocused: Record<string, number>
   /** 经验值与成就（激励系统） */
   xp: number
   unlocked: Record<string, number>

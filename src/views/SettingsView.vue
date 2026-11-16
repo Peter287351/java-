@@ -96,7 +96,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>导出 / 导入进度</h3>
-    <p class="muted small">导出的 JSON 也包含进行中的练习与每日学习时间；导入会整体覆盖当前进度、练习记录与学习时间。</p>
+    <p class="muted small">导出的 JSON 也包含进行中的练习、每日学习时间与 SQL 重点标记；导入会整体覆盖当前进度、练习记录、学习时间与重点标记。</p>
     <div class="question-actions">
       <button class="btn btn-primary" @click="exportData">导出进度 JSON</button>
       <button class="btn" @click="fileInput?.click()">从文件导入</button>
