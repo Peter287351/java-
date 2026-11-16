@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { questionById, questionIndex, getChapter, getModule, modules as allModules } from '@/lib/content'
 import type { QuestionRef } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
@@ -14,6 +14,7 @@ import LearnerReport from '@/components/LearnerReport.vue'
 type AnswerRecord = PracticeAnswerRecord
 
 const route = useRoute()
+const router = useRouter()
 const store = useProgressStore()
 /** 当前练习范围的标识：不同章节/模块各自的进度互不覆盖 */
 const scopeKey = ref('')
@@ -32,6 +33,8 @@ const combo = ref(0)
 const bestCombo = ref(0)
 /** 本轮实际拿到的经验值：逐次累加，跨页面也不会算错 */
 const sessionXpEarned = ref(0)
+/** 重刷错题前的整轮快照：订正结束后把结果并回去，小结显示整轮而非仅错题 */
+const retryOrigin = ref<NonNullable<PracticeSession['retryOrigin']> | null>(null)
 
 function scopeLabel() {
   const q = route.query
@@ -91,6 +94,24 @@ function restore(s: PracticeSession) {
   combo.value = Number(s.combo) || 0
   bestCombo.value = Number(s.bestCombo) || 0
   sessionXpEarned.value = Number(s.sessionXpEarned) || 0
+  // 重刷快照：只在三部分都是数组时恢复，避免坏数据把整轮记录弄乱
+  const ro = s.retryOrigin
+  retryOrigin.value =
+    ro && Array.isArray(ro.ids) && Array.isArray(ro.drafts) && Array.isArray(ro.records)
+      ? {
+          ids: [...ro.ids],
+          drafts: ro.drafts.map((d) => (Array.isArray(d) ? [...d] : [])),
+          records: ro.records.map((r) =>
+            r
+              ? {
+                  selected: Array.isArray(r.selected) ? [...r.selected] : [],
+                  correct: !!r.correct,
+                  cheer: String(r.cheer ?? ''),
+                }
+              : null,
+          ),
+        }
+      : null
 }
 
 /** 整轮练习写进进度数据，随 localStorage / 导出导入一起保存 */
@@ -108,6 +129,7 @@ function persist() {
     combo: combo.value,
     bestCombo: bestCombo.value,
     sessionXpEarned: sessionXpEarned.value,
+    ...(retryOrigin.value ? { retryOrigin: retryOrigin.value } : {}),
     lastAt: Date.now(),
   })
 }
@@ -139,6 +161,7 @@ function build(fresh = false) {
   combo.value = 0
   bestCombo.value = 0
   sessionXpEarned.value = 0
+  retryOrigin.value = null
   persist()
 }
 
@@ -242,7 +265,33 @@ const nextLabel = computed(() => {
   return summaryShown.value ? '返回小结 ↑' : '查看小结 →'
 })
 
+/**
+ * 重刷错题结束后，把订正结果按题 id 并回重刷前的整轮记录。
+ * 这样小结统计、学习画像、回看都基于整轮，而不是只剩那几道重刷题。
+ * 经验值是重刷时真实赚到的，保留累计不回退。
+ */
+function mergeRetryIntoOrigin() {
+  const origin = retryOrigin.value
+  if (!origin) return
+  const fixed = new Map<string, AnswerRecord>()
+  ids.value.forEach((qid, i) => {
+    const r = records.value[i]
+    if (r) fixed.set(qid, { ...r, selected: [...r.selected] })
+  })
+  ids.value = [...origin.ids]
+  drafts.value = origin.drafts.map((d) => [...d])
+  records.value = origin.records.map((r, i) => {
+    const updated = fixed.get(origin.ids[i])
+    if (updated) return updated
+    return r ? { ...r, selected: [...r.selected] } : null
+  })
+  idx.value = 0
+  lastSubmittedIdx.value = -1
+  retryOrigin.value = null
+}
+
 function finishSession() {
+  mergeRetryIntoOrigin()
   finished.value = true
   summaryShown.value = true
   // 全对彩带庆祝
@@ -293,7 +342,17 @@ const pickedByQid = computed(() => {
 })
 
 function retryWrong() {
-  ids.value = [...wrongThisRound.value]
+  const wrongIds = [...wrongThisRound.value]
+  if (!wrongIds.length) return
+  // 只在第一次重刷时存整轮快照；重刷里又错、再次重刷时不覆盖原始整轮
+  if (!retryOrigin.value) {
+    retryOrigin.value = {
+      ids: [...ids.value],
+      drafts: drafts.value.map((d) => [...d]),
+      records: records.value.map((r) => (r ? { ...r, selected: [...r.selected] } : null)),
+    }
+  }
+  ids.value = wrongIds
   idx.value = 0
   drafts.value = ids.value.map(() => [])
   records.value = ids.value.map(() => null)
@@ -304,6 +363,28 @@ function retryWrong() {
 
 function restart() {
   build(true)
+}
+
+/** 当前是章节练习时，模块里的下一章；最后一章或自由练习时为 null */
+const nextChapter = computed(() => {
+  const q = route.query
+  if (!q.module || !q.chapter) return null
+  const m = getModule(String(q.module))
+  if (!m) return null
+  const i = m.chapters.findIndex((c) => c.meta.id === String(q.chapter))
+  if (i < 0 || i >= m.chapters.length - 1) return null
+  return m.chapters[i + 1]
+})
+
+/** 做完一章进下一章：先把本轮落盘（不同章节 scopeKey 不同、互不覆盖），再切路由 */
+function goNextChapter() {
+  const ch = nextChapter.value
+  if (!ch || !route.query.module) return
+  persist()
+  router.push({
+    path: '/practice',
+    query: { module: String(route.query.module), chapter: ch.meta.id },
+  })
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -448,6 +529,9 @@ onUnmounted(() => {
         重刷本次错题（{{ wrongThisRound.length }}）
       </button>
       <button class="btn" @click="restart">再来一轮</button>
+      <button v-if="nextChapter" class="btn btn-primary" @click="goNextChapter">
+        下一章：{{ nextChapter.meta.title }} →
+      </button>
       <router-link to="/path"><button class="btn">返回路径</button></router-link>
     </div>
   </div>
