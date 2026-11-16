@@ -4,13 +4,14 @@
   "emoji": "🌐",
   "stage": 5,
   "order": 14,
-  "description": "CAP 与 BASE、分布式 ID、分布式锁、事务与幂等，再进阶到数据分片、共识选主与脑裂防护",
+  "description": "CAP 与 BASE、分布式 ID、分布式锁、事务与幂等，再进阶到数据分片、共识选主与脑裂防护，以及 Seata 分布式事务落地",
   "chapters": [
     { "id": "01-cap", "title": "CAP、BASE 与一致性" },
     { "id": "02-id", "title": "分布式 ID" },
     { "id": "03-lock", "title": "分布式锁" },
     { "id": "04-transaction", "title": "分布式事务与幂等" },
     { "id": "05-sharding", "title": "数据分片与一致性哈希" },
-    { "id": "06-consensus", "title": "共识、选主与脑裂" }
+    { "id": "06-consensus", "title": "共识、选主与脑裂" },
+    { "id": "07-seata", "title": "Seata 与分布式事务落地" }
   ]
 }

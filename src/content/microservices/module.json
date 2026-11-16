@@ -4,12 +4,14 @@
   "emoji": "🧩",
   "stage": 5,
   "order": 13,
-  "description": "注册发现、OpenFeign 与负载均衡、网关路由、容错与链路追踪，再进阶到限流算法、分布式限流与灰度交付",
+  "description": "注册发现、OpenFeign 与负载均衡、网关路由、容错与链路追踪，再进阶到限流算法、灰度交付、RabbitMQ 消息可靠性与统一认证授权（JWT / OAuth2 / SSO）",
   "chapters": [
     { "id": "01-discovery", "title": "服务注册与发现" },
     { "id": "02-feign-lb", "title": "OpenFeign 与负载均衡" },
     { "id": "03-gateway", "title": "网关、路由与过滤器" },
     { "id": "04-resilience", "title": "容错、配置中心与链路追踪" },
-    { "id": "05-traffic", "title": "流量治理与高可用交付" }
+    { "id": "05-traffic", "title": "流量治理与高可用交付" },
+    { "id": "06-rabbitmq", "title": "RabbitMQ 与消息可靠性" },
+    { "id": "07-auth", "title": "统一认证授权：JWT、OAuth2 与 SSO" }
   ]
 }
