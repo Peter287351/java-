@@ -10,10 +10,59 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,
+    // AI 助教本地代理：部分网关（如 OpenCode Go）不返回 CORS 头，浏览器直连会被拦，
+    // 由 dev server 服务端转发绕开跨域；OpenCode Go 还要求 x-opencode-session 路由头。
+    // 仅开发/预览生效；生产静态部署需改用支持 CORS 的服务商或自建反代（见设置页说明）。
+    proxy: {
+      '/ai-opencode': {
+        target: 'https://opencode.ai',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-opencode/, ''),
+        headers: { 'x-opencode-session': 'houduan-study-web' },
+      },
+      '/ai-deepseek': {
+        target: 'https://api.deepseek.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-deepseek/, ''),
+      },
+      '/ai-moonshot': {
+        target: 'https://api.moonshot.cn',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-moonshot/, ''),
+      },
+      '/ai-qwen': {
+        target: 'https://dashscope.aliyuncs.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-qwen/, ''),
+      },
+    },
   },
   preview: {
     port: 5174,
     strictPort: true,
+    proxy: {
+      '/ai-opencode': {
+        target: 'https://opencode.ai',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-opencode/, ''),
+        headers: { 'x-opencode-session': 'houduan-study-web' },
+      },
+      '/ai-deepseek': {
+        target: 'https://api.deepseek.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-deepseek/, ''),
+      },
+      '/ai-moonshot': {
+        target: 'https://api.moonshot.cn',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-moonshot/, ''),
+      },
+      '/ai-qwen': {
+        target: 'https://dashscope.aliyuncs.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ai-qwen/, ''),
+      },
+    },
   },
   resolve: {
     alias: {

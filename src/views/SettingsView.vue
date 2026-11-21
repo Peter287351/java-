@@ -168,6 +168,9 @@ const doubts = computed(() =>
     </p>
     <p class="muted small" style="margin: 8px 0 0">
       提示：Key 永远只存在本机浏览器、随测试连接直连服务商，不会出现在代码与 Git 仓库里；公共电脑用完点「清除配置」；导出的进度备份不含 API Key。
+      <template v-if="aiForm.preset === 'opencode'">
+        <br />⚠️ 已知限制：OpenCode Go 网关不支持浏览器跨域直连，本地用 <b>npm run dev</b> 时会自动走本地代理（需保持 dev 在运行）；部署上线后请改用 DeepSeek 等预设。
+      </template>
     </p>
   </div>
 

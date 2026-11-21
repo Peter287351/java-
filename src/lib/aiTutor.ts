@@ -106,6 +106,27 @@ export interface ChatMessage {
   content: string
 }
 
+/**
+ * 开发/预览模式下，把已知服务商的地址改写为 Vite 代理路径（绕开浏览器 CORS 限制）。
+ * 生产静态部署没有代理，仍直连——此时需要服务商本身支持 CORS（见设置页说明）。
+ */
+const DEV_PROXIES: [string, string][] = [
+  ['https://opencode.ai', '/ai-opencode'],
+  ['https://api.deepseek.com', '/ai-deepseek'],
+  ['https://api.moonshot.cn', '/ai-moonshot'],
+  ['https://dashscope.aliyuncs.com', '/ai-qwen'],
+]
+
+function resolveEndpoint(baseUrl: string): string {
+  const clean = baseUrl.replace(/\/+$/, '')
+  if (import.meta.env.DEV) {
+    for (const [host, prefix] of DEV_PROXIES) {
+      if (clean.startsWith(host)) return prefix + clean.slice(host.length)
+    }
+  }
+  return clean
+}
+
 /** 流式对话：onDelta 收到增量文本；返回完整文本。中途可 AbortController 取消 */
 export async function chatStream(
   cfg: AiConfig,
@@ -113,13 +134,20 @@ export async function chatStream(
   onDelta: (delta: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
-  const url = cfg.baseUrl.replace(/\/+$/, '') + '/chat/completions'
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
-    body: JSON.stringify({ model: cfg.model, messages, stream: true, temperature: 0.7 }),
-    signal,
-  })
+  const url = resolveEndpoint(cfg.baseUrl) + '/chat/completions'
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({ model: cfg.model, messages, stream: true, temperature: 0.7 }),
+      signal,
+    })
+  } catch {
+    throw new Error(
+      '网络请求没有到达服务商（Failed to fetch）。常见原因：① 本地使用时 npm run dev 没在运行（代理不生效）；② 线上部署时服务商不支持浏览器跨域，请改用 DeepSeek 等预设；③ 本机网络无法访问该服务商。',
+    )
+  }
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => '')
     throw new Error(`接口返回 ${res.status}：${text.slice(0, 200) || '无响应体'}`)
