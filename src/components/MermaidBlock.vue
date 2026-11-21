@@ -10,8 +10,15 @@ async function render() {
   try {
     const { default: mermaid } = await import('mermaid')
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' })
+    // 清理行首缩进：mermaid 解析器对首行外的意外缩进偶发敏感
+    const code = props.code
+      .trim()
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .join('\n')
     const id = 'mmd-' + Math.random().toString(36).slice(2)
-    const { svg: out } = await mermaid.render(id, props.code.trim())
+    const { svg: out } = await mermaid.render(id, code)
     svg.value = out
   } catch {
     failed.value = true

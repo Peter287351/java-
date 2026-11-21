@@ -86,10 +86,14 @@ function scrollToEnd() {
   nextTick(() => logEnd.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 }
 
-/** 把 AI 回答切成 文本 / mermaid 段落 */
-function splitSegments(text: string): { type: 'text' | 'mermaid'; content: string }[] {
+/** 把 AI 回答切成 文本 / mermaid 段落；allowUnclosed 容忍 AI 忘写闭合围栏（仅对已完成的消息启用） */
+function splitSegments(
+  text: string,
+  allowUnclosed = false,
+): { type: 'text' | 'mermaid'; content: string }[] {
   const out: { type: 'text' | 'mermaid'; content: string }[] = []
-  const re = /```mermaid\s*\n([\s\S]*?)```/g
+  const closer = allowUnclosed ? '(?:```|$)' : '```'
+  const re = new RegExp('```mermaid\\s*\\n([\\s\\S]*?)' + closer, 'g')
   let last = 0
   for (const m of text.matchAll(re)) {
     const before = text.slice(last, m.index).replace(/\*\*/g, '').trim()
@@ -100,6 +104,11 @@ function splitSegments(text: string): { type: 'text' | 'mermaid'; content: strin
   const tail = text.slice(last).replace(/\*\*/g, '').trim()
   if (tail) out.push({ type: 'text', content: tail })
   return out.length ? out : [{ type: 'text', content: text.replace(/\*\*/g, '') }]
+}
+
+/** 正在流式的最后一条消息不启用未闭合容错（避免边流边重渲染图表） */
+function allowUnclosedMsg(i: number): boolean {
+  return !(streaming.value && i === chatLog.value.length - 1)
 }
 
 /** 恢复一条历史记录到对话区（可继续追问） */
@@ -284,7 +293,7 @@ function openPanel() {
         <div v-for="(msg, i) in chatLog" :key="i" class="ai-msg" :class="msg.role">
           <div v-if="msg.role === 'user'" class="ai-msg-user">🧑 你问：{{ msg.text }}</div>
           <div v-else class="ai-msg-assistant">
-            <template v-for="(seg, j) in splitSegments(msg.text)" :key="j">
+            <template v-for="(seg, j) in splitSegments(msg.text, allowUnclosedMsg(i))" :key="j">
               <div v-if="seg.type === 'text'" class="ai-text">{{ seg.content }}</div>
               <MermaidBlock v-else :code="seg.content" />
             </template>

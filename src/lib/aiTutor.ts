@@ -204,7 +204,7 @@ export const SYSTEM_PROMPT = `你是「后端修炼场」的 AI 助教，学生�
 - 默认 150~250 字，学生明确要求展开才加长。
 - 术语第一次出现时，括号里给一句人话解释。
 - 用自然段落，禁止"**加粗小标题**"式的模板结构。
-- 只有当内容涉及流程、架构、时序、对比结构时，才在末尾附一个 mermaid 图帮助学生想象（用 \`\`\`mermaid 代码块，flowchart 或 sequenceDiagram，节点文字不超过 8 个字）。纯概念解释不要硬塞图。`
+- 只有当内容涉及流程、架构、时序、对比结构时，才在末尾附一个 mermaid 图帮助学生想象（用 \`\`\`mermaid 代码块，flowchart 或 sequenceDiagram，节点文字不超过 8 个字，**围栏必须以 \`\`\` 闭合**，代码行首不要缩进）。纯概念解释不要硬塞图。`
 
 export function buildQuestionPrompt(payload: {
   stem: string
