@@ -11,6 +11,7 @@ import {
   saveAiRecord,
   setCached,
   SYSTEM_PROMPT,
+  wrapFollowup,
   type AiRecord,
   type ChatMessage,
 } from '@/lib/aiTutor'
@@ -150,7 +151,8 @@ async function generate(followupText?: string) {
         { role: 'user', content: initialPrompt.value },
       ]
     } else if (followupText) {
-      apiMessages = [...apiMessages, { role: 'user', content: followupText }]
+      // 追问包一层聚焦指令：只回应学生这条消息，防止复读整套逐选项讲解
+      apiMessages = [...apiMessages, { role: 'user', content: wrapFollowup(followupText) }]
     }
     if (!followupText) chatLog.value = []
     chatLog.value.push({ role: 'assistant', text: '' })
