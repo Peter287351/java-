@@ -564,12 +564,14 @@ onUnmounted(() => {
     <AiTutorPanel
       v-if="!submitted"
       :cache-key="`q:${current.q.id}:pre`"
+      :group-key="`q:${current.q.id}`"
       kind="question"
       :payload="{ stem: current.q.stem, options: current.q.options }"
     />
     <AiTutorPanel
       v-if="submitted"
       :cache-key="`q:${current.q.id}`"
+      :group-key="`q:${current.q.id}`"
       kind="question"
       :payload="{ stem: current.q.stem, options: current.q.options, answers: current.q.answers, explanation: current.q.explanation }"
     />

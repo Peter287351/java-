@@ -4,13 +4,17 @@ import {
   buildChapterPrompt,
   buildQuestionPrompt,
   chatStream,
+  deleteAiRecord,
   getAiConfig,
   getCached,
+  recordsForGroup,
+  saveAiRecord,
   setCached,
   SYSTEM_PROMPT,
+  type AiRecord,
   type ChatMessage,
 } from '@/lib/aiTutor'
-import { plainText } from '@/lib/utils'
+import { formatDateTime, plainText } from '@/lib/utils'
 import MermaidBlock from './MermaidBlock.vue'
 
 const props = withDefaults(
@@ -25,6 +29,8 @@ const props = withDefaults(
       title?: string
     }
     kind?: 'question' | 'chapter'
+    /** 历史记录聚合键：同一题的讲背景/讲答案两阶段共用（默认用 cacheKey） */
+    groupKey?: string
   }>(),
   { kind: 'question' },
 )
@@ -38,6 +44,10 @@ const copied = ref(false)
 /** 对话记录：assistant 为主气泡，用户追问为右侧小气泡 */
 const chatLog = ref<{ role: 'user' | 'assistant'; text: string }[]>([])
 const logEnd = ref<HTMLElement | null>(null)
+/** 历史记录 */
+const recordsOpen = ref(false)
+const currentRecordId = ref<string | null>(null)
+const recordVersion = ref(0) // 触发记录列表刷新
 
 let controller: AbortController | null = null
 let apiMessages: ChatMessage[] = []
@@ -63,6 +73,15 @@ const fallbackQuestion = computed(() => {
   })
 })
 
+const cacheKey = computed(() => props.cacheKey)
+/** 历史按题目聚合：同一题两个阶段（讲背景/讲答案）的对话互可见 */
+const groupKey = computed(() => props.groupKey ?? props.cacheKey)
+
+const keyRecords = computed(() => {
+  void recordVersion.value
+  return recordsForGroup(groupKey.value)
+})
+
 function scrollToEnd() {
   nextTick(() => logEnd.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
 }
@@ -83,7 +102,35 @@ function splitSegments(text: string): { type: 'text' | 'mermaid'; content: strin
   return out.length ? out : [{ type: 'text', content: text.replace(/\*\*/g, '') }]
 }
 
+/** 恢复一条历史记录到对话区（可继续追问） */
+function restoreRecord(rec: AiRecord) {
+  apiMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...rec.messages.map((m) => ({ ...m }))]
+  currentRecordId.value = rec.id
+  chatLog.value = rec.messages
+    .filter((m, i) => !(i === 0 && m.role === 'user')) // 首条 user 是题目上下文，不重复展示
+    .map((m) => ({ role: m.role as 'user' | 'assistant', text: m.content }))
+  recordsOpen.value = false
+  error.value = ''
+  scrollToEnd()
+}
+
+/** 把当前对话存进历史（自动：初始讲解建新记录，追问续写原记录） */
+function persistCurrent() {
+  const msgs = apiMessages.filter((m) => m.role !== 'system')
+  if (!msgs.length) return
+  const rec: AiRecord = {
+    id: currentRecordId.value ?? `${cacheKey.value}:${Date.now()}`,
+    cacheKey: cacheKey.value,
+    date: Date.now(),
+    messages: msgs,
+  }
+  currentRecordId.value = rec.id
+  saveAiRecord(rec)
+  recordVersion.value++
+}
+
 async function generate(followupText?: string) {
+  if (!cfg) return
   error.value = ''
   streaming.value = true
   controller = new AbortController()
@@ -99,13 +146,14 @@ async function generate(followupText?: string) {
     if (!followupText) chatLog.value = []
     chatLog.value.push({ role: 'assistant', text: '' })
     const logIdx = chatLog.value.length - 1
-    const full = await chatStream(cfg!, apiMessages, (d) => {
+    const full = await chatStream(cfg, apiMessages, (d) => {
       chatLog.value[logIdx].text += d
       scrollToEnd()
     }, controller.signal)
     chatLog.value[logIdx].text = full
     apiMessages = [...apiMessages, { role: 'assistant', content: full }]
-    if (!followupText) setCached(props.cacheKey, full)
+    if (!followupText) setCached(cacheKey.value, full)
+    persistCurrent()
     scrollToEnd()
   } catch (e) {
     if ((e as Error).name !== 'AbortError') {
@@ -129,7 +177,7 @@ function ask(text: string) {
 }
 
 function regenerate() {
-  apiMessages = apiMessages.slice(0, 2) // system + 初始题目上下文
+  apiMessages = apiMessages.slice(0, 2)
   chatLog.value = []
   generate()
 }
@@ -144,33 +192,88 @@ function copyFallback() {
   setTimeout(() => (copied.value = false), 2000)
 }
 
-// 切换题目时重置面板
+function removeRecord(id: string) {
+  if (!window.confirm('删除这条历史记录？')) return
+  deleteAiRecord(id)
+  if (currentRecordId.value === id) currentRecordId.value = null
+  recordVersion.value++
+}
+
+function recordPreview(rec: AiRecord): string {
+  const first = rec.messages.find((m) => m.role === 'assistant')
+  return first ? plainText(first.content, 70) : '(空)'
+}
+
+// 切换题目时：优先恢复最近一条历史记录（含追问），否则退回缓存
 watch(
   () => props.cacheKey,
   () => {
     cfg = getAiConfig()
     apiMessages = []
-    chatLog.value = getCached(props.cacheKey) ? [{ role: 'assistant', text: getCached(props.cacheKey)! }] : []
-    followup.value = ''
+    currentRecordId.value = null
+    recordsOpen.value = false
     error.value = ''
+    followup.value = ''
+    const latest = recordsForGroup(groupKey.value)[0]
+    if (latest) {
+      restoreRecord(latest)
+      return
+    }
+    chatLog.value = getCached(props.cacheKey) ? [{ role: 'assistant', text: getCached(props.cacheKey)! }] : []
   },
 )
+
+function openPanel() {
+  open.value = true
+  if (!chatLog.value.length) {
+    const latest = recordsForGroup(groupKey.value)[0]
+    if (latest) restoreRecord(latest)
+    else if (getCached(cacheKey.value)) {
+      chatLog.value = [{ role: 'assistant', text: getCached(cacheKey.value)! }]
+      currentRecordId.value = null
+    }
+  }
+}
 </script>
 
 <template>
   <div class="ai-tutor">
-    <button v-if="!open" class="btn ai-entry" @click="open = true">
+    <button v-if="!open" class="btn ai-entry" @click="openPanel">
       🤖 看不懂？让 AI 直接回答你的问题
+      <span v-if="keyRecords.length" class="ai-entry-badge">🕘 {{ keyRecords.length }}</span>
     </button>
 
     <div v-else class="ai-panel card">
       <div class="ai-head">
         <strong>🤖 AI 助教</strong>
-        <span class="muted small">直接问，答你所问 · 不复读不套话</span>
-        <button class="btn ai-mini" @click="open = false">收起</button>
+        <span class="muted small">直接问，答你所问 · 对话自动保存</span>
+        <span class="ai-head-actions">
+          <button class="btn ai-mini" :class="recordsOpen ? 'btn-primary ai-mini' : ''" @click="recordsOpen = !recordsOpen">
+            🕘 记录（{{ keyRecords.length }}）
+          </button>
+          <button class="btn ai-mini" @click="open = false">收起</button>
+        </span>
       </div>
 
+      <!-- 已配置：记录列表 + 对话区 -->
       <template v-if="cfg">
+      <!-- 历史记录列表 -->
+      <div v-if="recordsOpen" class="ai-records">
+        <p v-if="!keyRecords.length" class="muted small" style="margin: 4px 0">这道题还没有历史记录。</p>
+        <div v-for="rec in keyRecords" :key="rec.id" class="ai-record">
+          <div class="ai-record-main" @click="restoreRecord(rec)">
+            <p class="ai-record-preview">{{ recordPreview(rec) }}</p>
+            <p class="muted small" style="margin: 0">{{ formatDateTime(rec.date) }} · {{ rec.messages.length - 1 }} 条消息 · 点击恢复对话</p>
+          </div>
+          <button class="btn ai-mini btn-danger" @click.stop="removeRecord(rec.id)">删除</button>
+        </div>
+        <p v-if="keyRecords.length" class="muted small" style="margin: 6px 0 0">
+          恢复后可以基于旧对话继续追问；对话随浏览器保存，最多保留 100 条。
+        </p>
+      </div>
+
+      <!-- 对话区 -->
+      <template v-else>
         <div v-if="!chatLog.length && !streaming" class="ai-start">
           <button class="btn btn-primary" @click="generate()">
             {{ getCached(cacheKey) ? '查看讲解' : '🤖 讲解这道题' }}
@@ -205,7 +308,9 @@ watch(
           <button v-if="streaming" class="btn btn-danger" @click="stop">停止</button>
         </div>
       </template>
+      </template>
 
+      <!-- 未配置：降级引导 -->
       <template v-else>
         <p class="small" style="margin: 6px 0">
           配置一个 AI Key 后，这里会<b>直接回答你提的问题</b>（类比先行、大白话、可追问、可画图），不用再跳出去查资料。

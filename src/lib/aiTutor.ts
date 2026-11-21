@@ -86,6 +86,61 @@ export function clearKeyMemory() {
   localStorage.removeItem(KEY_MEMORY)
 }
 
+/* ---------- AI 对话记录持久化（每道题的讲解 + 追问都可回看） ---------- */
+
+const HISTORY_KEY = 'hds_ai_history_v1'
+const HISTORY_LIMIT = 100
+
+export interface AiRecord {
+  id: string
+  cacheKey: string
+  date: number
+  /** 不含 system 消息（恢复时组件自动拼接）；system 之后的完整对话 */
+  messages: ChatMessage[]
+}
+
+export function loadAiRecords(): AiRecord[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const list = JSON.parse(raw) as AiRecord[]
+    return Array.isArray(list) ? list.sort((a, b) => b.date - a.date) : []
+  } catch {
+    return []
+  }
+}
+
+export function recordsFor(cacheKey: string): AiRecord[] {
+  return loadAiRecords().filter((r) => r.cacheKey === cacheKey)
+}
+
+/** 按题目聚合查询：同一题的「讲背景」与「讲答案」两阶段对话互可见 */
+export function recordsForGroup(groupKey: string): AiRecord[] {
+  return loadAiRecords().filter(
+    (r) => r.cacheKey === groupKey || r.cacheKey.startsWith(groupKey + ':'),
+  )
+}
+
+export function saveAiRecord(rec: AiRecord) {
+  try {
+    const list = loadAiRecords().filter((r) => r.id !== rec.id && !(r.cacheKey === rec.cacheKey && r.date === rec.date))
+    list.unshift(rec)
+    while (list.length > HISTORY_LIMIT) list.pop()
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
+  } catch {
+    /* 存储满等异常不阻塞主流程 */
+  }
+}
+
+export function deleteAiRecord(id: string) {
+  try {
+    const list = loadAiRecords().filter((r) => r.id !== id)
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list))
+  } catch {
+    /* 同上 */
+  }
+}
+
 export function getAiConfig(): AiConfig | null {
   try {
     const raw = localStorage.getItem(CFG_KEY)

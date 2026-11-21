@@ -2247,3 +2247,47 @@ summary {
   max-width: 100%;
   height: auto;
 }
+
+/* AI 历史记录列表 */
+.ai-records {
+  border-top: 1px dashed var(--border-strong);
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.ai-record {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 8px;
+}
+
+.ai-record-main {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.ai-record-main:hover .ai-record-preview {
+  color: var(--primary);
+}
+
+.ai-record-preview {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-head-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
