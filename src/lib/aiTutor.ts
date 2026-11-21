@@ -10,6 +10,12 @@ const CFG_KEY = 'hds_ai_config'
 const CACHE_KEY = 'hds_ai_cache_v1'
 
 export const AI_PRESETS = [
+  {
+    id: 'opencode',
+    label: 'OpenCode Go（ZCode 同款网关）',
+    baseUrl: 'https://opencode.ai/zen/go/v1',
+    model: '',
+  },
   { id: 'deepseek', label: 'DeepSeek（推荐，便宜）', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
   { id: 'moonshot', label: 'Kimi / Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
   { id: 'qwen', label: '通义千问（OpenAI 兼容）', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },

@@ -21,3 +21,6 @@ Desktop.ini
 
 # WorkBuddy 本地工作数据（工作日志等，不上传公开仓库）
 .workbuddy/
+
+# 导出的学习进度备份可能含个人学习数据，禁止入库（AI Key 本就只存浏览器，不落盘）
+houduan-progress-*.json

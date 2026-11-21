@@ -12,13 +12,13 @@ const store = useProgressStore()
 const fileInput = ref<HTMLInputElement>()
 const message = ref('')
 
-/* AI 助教配置 */
+/* AI 助教配置（默认 OpenCode Go 网关，Key 与模型名由用户自填） */
 const savedCfg = getAiConfig()
 const aiForm = reactive({
-  preset: 'deepseek',
+  preset: savedCfg ? 'custom' : 'opencode',
   baseUrl: savedCfg?.baseUrl ?? AI_PRESETS[0].baseUrl,
   apiKey: savedCfg?.apiKey ?? '',
-  model: savedCfg?.model ?? AI_PRESETS[0].model,
+  model: savedCfg?.model ?? '',
 })
 const aiSaved = ref(false)
 const aiTesting = ref(false)
@@ -26,10 +26,10 @@ const aiTestResult = ref('')
 
 function applyPreset() {
   const p = AI_PRESETS.find((x) => x.id === aiForm.preset)
-  if (p && p.baseUrl) {
-    aiForm.baseUrl = p.baseUrl
-    aiForm.model = p.model
-  }
+  if (!p) return
+  if (p.baseUrl) aiForm.baseUrl = p.baseUrl
+  // 预设自带默认模型才覆盖；OpenCode Go 的模型名由用户自己填
+  if (p.model) aiForm.model = p.model
 }
 
 function saveAi() {
@@ -143,22 +143,22 @@ const doubts = computed(() =>
       </label>
       <label>
         接口地址 Base URL
-        <input v-model="aiForm.baseUrl" type="text" placeholder="https://api.deepseek.com/v1" />
+        <input v-model="aiForm.baseUrl" type="text" placeholder="https://opencode.ai/zen/go/v1" />
       </label>
       <label>
-        模型名 Model
-        <input v-model="aiForm.model" type="text" placeholder="deepseek-chat" />
+        模型名 Model（自己填，如 glm-5.3-flash）
+        <input v-model="aiForm.model" type="text" placeholder="glm-5.3-flash" />
       </label>
       <label>
-        API Key
-        <input v-model="aiForm.apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+        API Key（自己填，只存本机浏览器）
+        <input v-model="aiForm.apiKey" type="password" placeholder="粘贴你的 Key" autocomplete="off" />
       </label>
     </div>
     <div class="question-actions" style="margin-top: 10px">
       <button class="btn btn-primary" :disabled="!aiForm.baseUrl || !aiForm.apiKey || !aiForm.model" @click="saveAi">
         {{ aiSaved ? '已保存 ✓' : '保存配置' }}
       </button>
-      <button class="btn" :disabled="aiTesting || !aiForm.baseUrl || !aiForm.apiKey" @click="testAi">
+      <button class="btn" :disabled="aiTesting || !aiForm.baseUrl || !aiForm.apiKey || !aiForm.model" @click="testAi">
         {{ aiTesting ? '测试中…' : '测试连接' }}
       </button>
       <button class="btn btn-danger" @click="removeAi">清除配置</button>
@@ -167,7 +167,7 @@ const doubts = computed(() =>
       {{ aiTestResult }}
     </p>
     <p class="muted small" style="margin: 8px 0 0">
-      提示：公共电脑上用完记得点「清除配置」；导出的进度备份不含 API Key。
+      提示：Key 永远只存在本机浏览器、随测试连接直连服务商，不会出现在代码与 Git 仓库里；公共电脑用完点「清除配置」；导出的进度备份不含 API Key。
     </p>
   </div>
 
