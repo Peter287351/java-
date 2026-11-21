@@ -8,6 +8,7 @@ import { ACHIEVEMENTS, DAILY_GOAL } from '@/lib/motivation'
 import ProgressRing from '@/components/ProgressRing.vue'
 import CountUp from '@/components/CountUp.vue'
 import StudyTimeCard from '@/components/StudyTimeCard.vue'
+import FocusTimer from '@/components/FocusTimer.vue'
 import { sqlExercises } from '@/content/sql/exercises'
 
 const store = useProgressStore()
@@ -119,6 +120,9 @@ const chapterCount = computed(() => modules.reduce((n, m) => n + m.chapters.leng
         <router-link v-if="continueTask" :to="`/chapter/${continueTask.moduleId}/${continueTask.chapterId}`">
           <button class="btn btn-primary">进入章节</button>
         </router-link>
+      </div>
+      <div class="card fade-up">
+        <FocusTimer />
       </div>
       <div class="card fade-up">
         <h3>✍️ SQL 手写</h3>

@@ -123,6 +123,8 @@ export interface PracticeSession {
     drafts: string[][]
     records: (PracticeAnswerRecord | null)[]
   }
+  /** 第一次作答时就做错的题与当时选的答案：订正后仍保留，供学习画像 / AI 追问复盘错因 */
+  firstMistakes?: { qid: string; selected: string[] }[]
   lastAt: number
 }
 
@@ -131,6 +133,8 @@ export interface ProgressData {
   stats: Record<string, QuestionStat>
   /** qid → 存疑标记时间 */
   doubts: Record<string, number>
+  /** 选项级标记：`${qid}::${optionKey}` → 标记时间，供逐选项复习 */
+  optionMarks: Record<string, number>
   exams: ExamRecord[]
   /** 'YYYY-MM-DD' → 当日答题数 */
   daily: Record<string, number>
@@ -144,6 +148,8 @@ export interface ProgressData {
   sqlStats: Record<string, SqlStat>
   /** 手写 SQL 重点标记：题目 id → 标记时间（毫秒），供重点题清单按时间倒序展示 */
   sqlFocused: Record<string, number>
+  /** 完成的专注小回合次数 */
+  focusCount: number
   /** 经验值与成就（激励系统） */
   xp: number
   unlocked: Record<string, number>

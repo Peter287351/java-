@@ -304,6 +304,36 @@ check(
 )
 check('README 已同步重点标记说明', readmeSrc.includes('⭐ 重点题'))
 
+/* 选项级标记的关键连线：数据字段 / 旧备份清洗 / store 动作 / QuestionCard 按钮 / 页面接线 */
+const questionCardSrc = readFileSync(new URL('../src/components/QuestionCard.vue', import.meta.url), 'utf8')
+const practiceSrc = readFileSync(new URL('../src/views/PracticeView.vue', import.meta.url), 'utf8')
+const examSrc = readFileSync(new URL('../src/views/ExamView.vue', import.meta.url), 'utf8')
+check(
+  '选项标记字段与旧备份清洗齐全',
+  typesSrc.includes('optionMarks: Record<string, number>') &&
+    progressSrc.includes('optionMarks: {}') &&
+    progressSrc.includes('merged.optionMarks = clean'),
+)
+check(
+  '选项标记切换 / 查询 / 回显动作齐全',
+  progressSrc.includes('function toggleOptionMark') &&
+    progressSrc.includes('function isOptionMarked') &&
+    progressSrc.includes('function markedOptionsOf'),
+)
+check(
+  'QuestionCard 每个选项都有独立星标按钮且交卷后可用',
+  questionCardSrc.includes('class="option-wrap"') &&
+    questionCardSrc.includes('class="option-mark"') &&
+    questionCardSrc.includes("emit('toggleOptionMark', op.key)") &&
+    questionCardSrc.includes(':disabled="submitted"'),
+)
+check(
+  '章节练习与模考两处都已接上选项标记',
+  practiceSrc.includes('@toggle-option-mark="onToggleOptionMark"') &&
+    examSrc.includes('store.toggleOptionMark') &&
+    examSrc.includes(':marked-options='),
+)
+
 /* ---------- 8. 全部题目参考答案真实可执行 ---------- */
 group('真实引擎执行全部题目')
 const refFailures = []

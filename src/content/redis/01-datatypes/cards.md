@@ -22,3 +22,8 @@ String（缓存/计数/分布式锁）、List（消息队列/最新列表，底�
 
 1. 用 Zset 实现"文章热度榜"：`ZINCRBY hot:articles 1 "id:1001"`、取 Top10。自测标准：能说出并列分数的处理与按时间排序的变体（score 拼时间戳）。
 2. 分别用 String 与 Hash 存用户对象，`redis-cli --stat` 对比内存。自测标准：能说明什么时候 Hash 更省（字段多、单改频繁）。
+
+## 敲一遍：redis-cli 里玩五种数据结构
+模拟终端已连上 Redis。照着提示敲 SET/TTL/List/Hash，观察每种命令的返回格式——Redis 的返回值本身就透露了命令语义。
+
+~~~lab:redis-cmd~~~

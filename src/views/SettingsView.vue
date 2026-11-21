@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { getChapter, getModule, questionById, modules, totalQuestionCount } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
 import { formatStudyTime, plainText } from '@/lib/utils'
+import { AI_PRESETS, chatStream, clearAiConfig, getAiConfig, saveAiConfig } from '@/lib/aiTutor'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { mascotHidden, setMascotHidden } from '@/lib/mascotPref'
 import { resetStudySession } from '@/lib/studyTimer'
@@ -10,6 +11,53 @@ import { resetStudySession } from '@/lib/studyTimer'
 const store = useProgressStore()
 const fileInput = ref<HTMLInputElement>()
 const message = ref('')
+
+/* AI 助教配置 */
+const savedCfg = getAiConfig()
+const aiForm = reactive({
+  preset: 'deepseek',
+  baseUrl: savedCfg?.baseUrl ?? AI_PRESETS[0].baseUrl,
+  apiKey: savedCfg?.apiKey ?? '',
+  model: savedCfg?.model ?? AI_PRESETS[0].model,
+})
+const aiSaved = ref(false)
+const aiTesting = ref(false)
+const aiTestResult = ref('')
+
+function applyPreset() {
+  const p = AI_PRESETS.find((x) => x.id === aiForm.preset)
+  if (p && p.baseUrl) {
+    aiForm.baseUrl = p.baseUrl
+    aiForm.model = p.model
+  }
+}
+
+function saveAi() {
+  saveAiConfig({ baseUrl: aiForm.baseUrl.trim(), apiKey: aiForm.apiKey.trim(), model: aiForm.model.trim() })
+  aiSaved.value = true
+  setTimeout(() => (aiSaved.value = false), 2500)
+  message.value = 'AI 助教配置已保存（仅保存在本机浏览器）'
+}
+
+function removeAi() {
+  clearAiConfig()
+  aiForm.apiKey = ''
+  message.value = '已清除 AI 配置'
+}
+
+async function testAi() {
+  aiTesting.value = true
+  aiTestResult.value = ''
+  try {
+    saveAiConfig({ baseUrl: aiForm.baseUrl.trim(), apiKey: aiForm.apiKey.trim(), model: aiForm.model.trim() })
+    const answer = await chatStream(getAiConfig()!, [{ role: 'user', content: '收到请只回复两个字：正常' }], () => {})
+    aiTestResult.value = answer.includes('正常') ? '✅ 连接成功，AI 助教已就绪' : `✅ 连接成功（回复：${answer.slice(0, 30)}）`
+  } catch (e) {
+    aiTestResult.value = '❌ 连接失败：' + (e instanceof Error ? e.message : String(e))
+  } finally {
+    aiTesting.value = false
+  }
+}
 
 const answeredCount = computed(() => Object.keys(store.data.stats).length)
 const examCount = computed(() => store.data.exams.length)
@@ -71,12 +119,56 @@ const doubts = computed(() =>
     <h3>数据概览</h3>
     <p class="muted small">
       共 {{ modules.length }} 个模块 / {{ totalQuestionCount }} 题 ·
-      已作答 {{ answeredCount }} 题 · 模考 {{ examCount }} 次 · 存疑 {{ store.doubtedIds.length }} 题 ·
+      已作答 {{ answeredCount }} 题 · 模考 {{ examCount }} 次 · 存疑 {{ store.doubtedIds.length }} 题 · 选项标记 {{ store.optionMarkCount }} 处 ·
       进行中的练习 {{ activePracticeCount }} 轮
       <br />今日学习 {{ todayStudy }} · 累计学习 {{ totalStudy }}（切走页面或发呆 2 分钟自动暂停计时）
       <br />答题进度、每轮练习、学习时间都保存在浏览器 localStorage，换浏览器/清缓存前请先导出。
     </p>
     <p v-if="message" class="small" style="color: var(--green)">{{ message }}</p>
+  </div>
+
+  <div class="card settings-block">
+    <h3>🤖 AI 助教（把每道题讲成人话）</h3>
+    <p class="muted small">
+      配置后，每道题和每章知识卡旁都会出现「用人话讲给我听」按钮：AI 先用生活化类比、再讲概念，还能无限追问。
+      <br /><b>隐私说明：</b>API Key 只保存在你自己的浏览器 localStorage，请求从你的浏览器<b>直连</b>你选的服务商，不经过本站任何服务器、不进代码仓库。
+      推荐用 <a href="https://platform.deepseek.com/" target="_blank" rel="noopener">DeepSeek 开放平台</a> 申请（便宜，OpenAI 兼容）。
+    </p>
+    <div class="ai-form">
+      <label>
+        服务商预设
+        <select v-model="aiForm.preset" @change="applyPreset">
+          <option v-for="p in AI_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
+        </select>
+      </label>
+      <label>
+        接口地址 Base URL
+        <input v-model="aiForm.baseUrl" type="text" placeholder="https://api.deepseek.com/v1" />
+      </label>
+      <label>
+        模型名 Model
+        <input v-model="aiForm.model" type="text" placeholder="deepseek-chat" />
+      </label>
+      <label>
+        API Key
+        <input v-model="aiForm.apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+    </div>
+    <div class="question-actions" style="margin-top: 10px">
+      <button class="btn btn-primary" :disabled="!aiForm.baseUrl || !aiForm.apiKey || !aiForm.model" @click="saveAi">
+        {{ aiSaved ? '已保存 ✓' : '保存配置' }}
+      </button>
+      <button class="btn" :disabled="aiTesting || !aiForm.baseUrl || !aiForm.apiKey" @click="testAi">
+        {{ aiTesting ? '测试中…' : '测试连接' }}
+      </button>
+      <button class="btn btn-danger" @click="removeAi">清除配置</button>
+    </div>
+    <p v-if="aiTestResult" class="small" :style="{ color: aiTestResult.startsWith('✅') ? 'var(--green)' : 'var(--red)' }">
+      {{ aiTestResult }}
+    </p>
+    <p class="muted small" style="margin: 8px 0 0">
+      提示：公共电脑上用完记得点「清除配置」；导出的进度备份不含 API Key。
+    </p>
   </div>
 
   <div class="card settings-block">
@@ -96,7 +188,7 @@ const doubts = computed(() =>
 
   <div class="card settings-block">
     <h3>导出 / 导入进度</h3>
-    <p class="muted small">导出的 JSON 也包含进行中的练习、每日学习时间与 SQL 重点标记；导入会整体覆盖当前进度、练习记录、学习时间与重点标记。</p>
+    <p class="muted small">导出的 JSON 也包含进行中的练习、每日学习时间、SQL 重点标记与选项标记；导入会整体覆盖当前进度、练习记录、学习时间与各类标记。</p>
     <div class="question-actions">
       <button class="btn btn-primary" @click="exportData">导出进度 JSON</button>
       <button class="btn" @click="fileInput?.click()">从文件导入</button>

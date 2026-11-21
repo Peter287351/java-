@@ -5,15 +5,32 @@ import { DIFFICULTY_LABEL, QUESTION_TYPE_LABEL } from '@/lib/content'
 import { splitOptionNotes } from '@/lib/optionInsights'
 import MarkdownView from './MarkdownView.vue'
 
-const props = defineProps<{
-  question: QuestionSpec
-  selected: string[]
-  submitted: boolean
-  doubted?: boolean
-  examMode?: boolean
+const props = withDefaults(
+  defineProps<{
+    question: QuestionSpec
+    selected: string[]
+    submitted: boolean
+    doubted?: boolean
+    examMode?: boolean
+    /** 本题已被标记的选项 key 列表（来自进度数据） */
+    markedOptions?: string[]
+  }>(),
+  { markedOptions: () => [] },
+)
+
+const emit = defineEmits<{
+  toggle: [key: string]
+  submit: []
+  toggleDoubt: []
+  toggleOptionMark: [key: string]
 }>()
 
-const emit = defineEmits<{ toggle: [key: string]; submit: []; toggleDoubt: [] }>()
+/** 是否显示选项星标：正式模考中不显示（避免干扰），其余场景都显示 */
+const showOptionMarks = computed(() => !props.examMode)
+
+function isMarked(key: string) {
+  return props.markedOptions.includes(key)
+}
 
 const typeLabel = computed(() => QUESTION_TYPE_LABEL[props.question.type] ?? props.question.type)
 const diffLabel = computed(() => DIFFICULTY_LABEL[props.question.difficulty] ?? '')
@@ -62,27 +79,36 @@ function optionClass(key: string) {
     <MarkdownView class="stem" :source="question.stem" />
 
     <div class="options" :class="{ multi }">
-      <button
-        v-for="op in question.options"
-        :key="op.key"
-        type="button"
-        class="option"
-        :class="optionClass(op.key)"
-        :disabled="submitted"
-        @click="emit('toggle', op.key)"
-      >
-        <span class="option-key">{{ op.key }}</span>
-        <span class="option-text">
-          <span class="option-line">{{ op.text }}</span>
-          <span
-            v-if="submitted && optionNotes[op.key]"
-            class="option-note"
-            :class="{ good: question.answers.includes(op.key) }"
-          >
-            {{ optionNotes[op.key] }}
+      <div v-for="op in question.options" :key="op.key" class="option-wrap">
+        <button
+          type="button"
+          class="option"
+          :class="optionClass(op.key)"
+          :disabled="submitted"
+          @click="emit('toggle', op.key)"
+        >
+          <span class="option-key">{{ op.key }}</span>
+          <span class="option-text">
+            <span class="option-line">{{ op.text }}</span>
+            <span
+              v-if="submitted && optionNotes[op.key]"
+              class="option-note"
+              :class="{ good: question.answers.includes(op.key) }"
+            >
+              {{ optionNotes[op.key] }}
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+        <button
+          v-if="showOptionMarks"
+          type="button"
+          class="option-mark"
+          :class="{ on: isMarked(op.key) }"
+          :aria-pressed="isMarked(op.key)"
+          :title="isMarked(op.key) ? '取消这个选项的标记' : '标记这个选项（重点记一下）'"
+          @click="emit('toggleOptionMark', op.key)"
+        >{{ isMarked(op.key) ? '⭐' : '☆' }}</button>
+      </div>
     </div>
 
     <div v-if="!submitted && !examMode" class="question-actions">

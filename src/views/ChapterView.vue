@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { getChapter, getModule } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
 import MarkdownView from '@/components/MarkdownView.vue'
+import AiTutorPanel from '@/components/AiTutorPanel.vue'
 
 const props = defineProps<{ moduleId: string; chapterId: string }>()
 const store = useProgressStore()
@@ -24,6 +25,10 @@ const nextChapter = computed(() =>
 
 const stat = computed(() => store.groupStat(chapter.value?.questions.map((q) => q.id) ?? []))
 
+const cardsText = computed(() =>
+  chapter.value?.cards.map((c) => `## ${c.title}\n${c.body}`).join('\n\n') ?? '',
+)
+
 watch(
   () => [props.moduleId, props.chapterId] as const,
   ([m, c]) => store.setLastVisit(m, c),
@@ -44,6 +49,12 @@ watch(
     <p class="page-sub muted">
       {{ chapter.cards.length }} 张知识卡 · {{ chapter.questions.length }} 题 · 已掌握 {{ stat.done }}/{{ stat.total }}
     </p>
+
+    <AiTutorPanel
+      :cache-key="`ch:${moduleId}:${chapterId}`"
+      kind="chapter"
+      :payload="{ title: chapter.meta.title, cardText: cardsText }"
+    />
 
     <div v-for="card in chapter.cards" :key="card.title" class="knowledge-card card">
       <h3>{{ card.title }}</h3>

@@ -9,6 +9,7 @@ import { setEquals, shuffle } from '@/lib/utils'
 import { randomCheer, confetti } from '@/lib/motivation'
 import QuestionCard from '@/components/QuestionCard.vue'
 import LearnerReport from '@/components/LearnerReport.vue'
+import AiTutorPanel from '@/components/AiTutorPanel.vue'
 
 /** 本轮某题的作答快照：回看时原样展示，不会再计分 */
 type AnswerRecord = PracticeAnswerRecord
@@ -35,6 +36,8 @@ const bestCombo = ref(0)
 const sessionXpEarned = ref(0)
 /** 重刷错题前的整轮快照：订正结束后把结果并回去，小结显示整轮而非仅错题 */
 const retryOrigin = ref<NonNullable<PracticeSession['retryOrigin']> | null>(null)
+/** 第一次作答时就做错的题（含当时选的答案）：订正后也留着给 AI 追问用 */
+const firstMistakes = ref<NonNullable<PracticeSession['firstMistakes']>>([])
 
 function scopeLabel() {
   const q = route.query
@@ -112,6 +115,14 @@ function restore(s: PracticeSession) {
           ),
         }
       : null
+  // 第一次错题快照：只收合法条目（题号存在 + 选项是数组），坏数据不影响画像
+  firstMistakes.value = Array.isArray(s.firstMistakes)
+    ? s.firstMistakes
+        .filter(
+          (m) => m && typeof m.qid === 'string' && questionById(m.qid) && Array.isArray(m.selected),
+        )
+        .map((m) => ({ qid: m.qid, selected: m.selected.map(String) }))
+    : []
 }
 
 /** 整轮练习写进进度数据，随 localStorage / 导出导入一起保存 */
@@ -130,6 +141,7 @@ function persist() {
     bestCombo: bestCombo.value,
     sessionXpEarned: sessionXpEarned.value,
     ...(retryOrigin.value ? { retryOrigin: retryOrigin.value } : {}),
+    ...(firstMistakes.value.length ? { firstMistakes: firstMistakes.value } : {}),
     lastAt: Date.now(),
   })
 }
@@ -162,6 +174,7 @@ function build(fresh = false) {
   bestCombo.value = 0
   sessionXpEarned.value = 0
   retryOrigin.value = null
+  firstMistakes.value = []
   persist()
 }
 
@@ -317,6 +330,10 @@ function onToggleDoubt() {
   if (current.value) store.toggleDoubt(current.value.q.id)
 }
 
+function onToggleOptionMark(key: string) {
+  if (current.value) store.toggleOptionMark(current.value.q.id, key)
+}
+
 /** 小结页入口：整轮做完后再逐题回看（全部只读） */
 function reviewRound() {
   if (!results.value.length) return
@@ -341,6 +358,24 @@ const pickedByQid = computed(() => {
   return map
 })
 
+/**
+ * 学习画像 / AI 追问专用：优先用「第一次做错时的题 + 当时选的答案」。
+ * 重刷订正后 records 里这些题已变正确，若直接用 wrongRefs 就丢了最初的错因；
+ * 没重刷过则用当前本轮错题，行为与原来完全一致。
+ */
+const reportWrong = computed(() => {
+  if (!firstMistakes.value.length) return wrongRefs.value
+  return firstMistakes.value
+    .map((m) => questionById(m.qid))
+    .filter((r): r is QuestionRef => !!r)
+})
+const reportPickedByQid = computed(() => {
+  if (!firstMistakes.value.length) return pickedByQid.value
+  const map: Record<string, string[]> = {}
+  for (const m of firstMistakes.value) map[m.qid] = [...m.selected]
+  return map
+})
+
 function retryWrong() {
   const wrongIds = [...wrongThisRound.value]
   if (!wrongIds.length) return
@@ -351,6 +386,12 @@ function retryWrong() {
       drafts: drafts.value.map((d) => [...d]),
       records: records.value.map((r) => (r ? { ...r, selected: [...r.selected] } : null)),
     }
+    // 同时记下第一次做错的题和当时选的答案：订正后统计会变正确，但错因要留着问 AI
+    firstMistakes.value = wrongIds.map((qid) => {
+      const i = ids.value.indexOf(qid)
+      const r = i >= 0 ? records.value[i] : null
+      return { qid, selected: r ? [...r.selected] : [] }
+    })
   }
   ids.value = wrongIds
   idx.value = 0
@@ -365,6 +406,14 @@ function restart() {
   build(true)
 }
 
+/** 本轮所属模块（用于小结页「返回模块章节列表」）；自由刷题没带 module 时不显示 */
+const backModule = computed(() => {
+  const m = route.query.module
+  if (!m) return null
+  const meta = getModule(String(m))?.meta
+  return meta ? { id: meta.id, title: meta.title } : null
+})
+
 /** 当前是章节练习时，模块里的下一章；最后一章或自由练习时为 null */
 const nextChapter = computed(() => {
   const q = route.query
@@ -376,15 +425,17 @@ const nextChapter = computed(() => {
   return m.chapters[i + 1]
 })
 
-/** 做完一章进下一章：先把本轮落盘（不同章节 scopeKey 不同、互不覆盖），再切路由 */
+/**
+ * 做完一章进下一章：先把本轮落盘（不同章节 scopeKey 不同、互不覆盖），
+ * 再跳到下一章的知识卡页「先学后练」，而不是直接把人扔进题目。
+ * 用户读完知识卡后，在那一页点「开始本章练习」才进入答题。
+ */
 function goNextChapter() {
   const ch = nextChapter.value
   if (!ch || !route.query.module) return
+  const moduleId = String(route.query.module)
   persist()
-  router.push({
-    path: '/practice',
-    query: { module: String(route.query.module), chapter: ch.meta.id },
-  })
+  router.push(`/chapter/${moduleId}/${ch.meta.id}`)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -502,9 +553,25 @@ onUnmounted(() => {
       :selected="selected"
       :submitted="submitted"
       :doubted="current.q.id in store.data.doubts"
+      :marked-options="store.markedOptionsOf(current.q.id)"
       @toggle="onToggle"
       @submit="onSubmit"
       @toggle-doubt="onToggleDoubt"
+      @toggle-option-mark="onToggleOptionMark"
+    />
+
+    <!-- AI 助教：做题前讲背景概念（不剧透答案），提交后连答案一起讲透 -->
+    <AiTutorPanel
+      v-if="!submitted"
+      :cache-key="`q:${current.q.id}:pre`"
+      kind="question"
+      :payload="{ stem: current.q.stem, options: current.q.options }"
+    />
+    <AiTutorPanel
+      v-if="submitted"
+      :cache-key="`q:${current.q.id}`"
+      kind="question"
+      :payload="{ stem: current.q.stem, options: current.q.options, answers: current.q.answers, explanation: current.q.explanation }"
     />
 
     <div v-if="submitted" class="exam-nav">
@@ -530,16 +597,22 @@ onUnmounted(() => {
       </button>
       <button class="btn" @click="restart">再来一轮</button>
       <button v-if="nextChapter" class="btn btn-primary" @click="goNextChapter">
-        下一章：{{ nextChapter.meta.title }} →
+        下一章：{{ nextChapter.meta.title }}（先看知识卡）→
       </button>
+      <router-link v-if="backModule" :to="`/module/${backModule.id}`">
+        <button class="btn">返回《{{ backModule.title }}》章节列表</button>
+      </router-link>
       <router-link to="/path"><button class="btn">返回路径</button></router-link>
     </div>
   </div>
 
+  <p v-if="finished && firstMistakes.length" class="muted small" style="margin: 16px 0 -8px">
+    下面的学习画像按你<strong>第一次做错时</strong>的题目和当时选的答案生成（订正后的成绩见上方），照着 AI 追问复制过去就能复盘错因。
+  </p>
   <LearnerReport
     v-if="finished"
-    :wrong="wrongRefs"
+    :wrong="reportWrong"
     :total="results.length"
-    :picked-by-qid="pickedByQid"
+    :picked-by-qid="reportPickedByQid"
   />
 </template>

@@ -1951,3 +1951,230 @@ summary {
 .option.dim-with-note .option-key {
   opacity: 0.42;
 }
+
+/* 选项级标记：星标是 .option 的兄弟节点，交卷后选项 disabled 也能点 */
+.option-wrap {
+  position: relative;
+}
+
+.option-wrap .option {
+  padding-right: 46px;
+}
+
+.option-mark {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--muted, #94a3b8);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.option-mark:hover {
+  border-color: #facc15;
+  color: #facc15;
+}
+
+.option-mark.on {
+  border-color: rgba(250, 204, 21, 0.6);
+  background: rgba(250, 204, 21, 0.14);
+  color: #facc15;
+}
+
+/* ========== AI 助教面板 ========== */
+.ai-tutor {
+  margin-top: 12px;
+}
+
+.ai-entry {
+  width: 100%;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.ai-entry:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.ai-panel {
+  padding: 16px 18px;
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ai-head strong {
+  color: #b7c1ff;
+}
+
+.ai-head .ai-mini {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.ai-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-output {
+  background: #0a101f;
+  border: 1px solid rgba(124, 140, 255, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #dce6ff;
+  font-size: 14px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-streaming::after {
+  content: '';
+}
+
+.ai-streaming {
+  color: var(--primary);
+  font-size: 13px;
+  margin-top: 6px;
+  animation: pulseGlow 1.6s infinite;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.dots {
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.2; }
+}
+
+.ai-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--red-soft);
+  border: 1px solid rgba(251, 113, 133, 0.4);
+  color: var(--red);
+  font-size: 13px;
+}
+
+.ai-follow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-follow input {
+  flex: 1;
+  min-width: 200px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+.ai-follow input:focus {
+  border-color: var(--primary);
+}
+
+.ai-fallback-q {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--border-strong);
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.ai-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* AI 设置表单 */
+.ai-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ai-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ai-form input,
+.ai-form select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.ai-form input:focus,
+.ai-form select:focus {
+  border-color: var(--primary);
+}
+
+/* 专注时钟 */
+.focus-clock {
+  font-size: 34px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 8px 0;
+}
+
+.focus-clock.done {
+  background: linear-gradient(120deg, #34d399, #38d9f5);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@media (max-width: 640px) {
+  .ai-form {
+    grid-template-columns: 1fr;
+  }
+}

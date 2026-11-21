@@ -33,3 +33,8 @@
 ## 动手清单
 1. 制造一个未提交改动，依次练习 restore、restore --staged、stash pop，观察每步 status 的变化。
 2. 用 reset --hard 回退一次本地提交，再用 git reflog 找回哈希恢复；自测标准：能说清 reflog 为什么能救回来。
+
+## 敲一遍：误删提交后把它找回来
+模拟终端里预置了一场事故。按顺序敲命令，亲眼看着 HEAD 的指针被移回去——比背"reflog 能救回来"直观得多。
+
+~~~lab:git-rescue~~~

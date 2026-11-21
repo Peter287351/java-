@@ -48,3 +48,8 @@ SELECT id, name FROM user WHERE name = 'u10000';
 ### 练习 2：验证失效场景
 对同一个索引分别用 LIKE 'a%'、LIKE '%a'、UPPER(name) = 'A'、name = 123（varchar 列传数字）跑 EXPLAIN。
 自测标准：能预测哪几种 type 变成 ALL，并说出各自的原因。
+
+## 敲一遍：看懂 EXPLAIN
+模拟终端里有一张 500 万行的 orders 表。先敲没索引的查询，再建索引、再查一次，对比 type / key / rows 的变化，一眼看懂索引到底有没有生效。
+
+~~~lab:mysql-explain~~~

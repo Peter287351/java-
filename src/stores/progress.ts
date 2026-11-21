@@ -12,6 +12,7 @@ function defaultData(): ProgressData {
     version: 1,
     stats: {},
     doubts: {},
+    optionMarks: {},
     exams: [],
     daily: {},
     studySeconds: {},
@@ -20,6 +21,7 @@ function defaultData(): ProgressData {
     practiceSessions: {},
     sqlStats: {},
     sqlFocused: {},
+    focusCount: 0,
     xp: 0,
     unlocked: {},
     bestCombo: 0,
@@ -58,6 +60,20 @@ function normalize(raw: ProgressData): ProgressData {
     }
     merged.sqlFocused = clean
   }
+  // 选项级标记：key 形如 "题目id::选项key"，value 为时间戳。旧备份没有该字段；
+  // 手改坏的 JSON 可能给数组/字符串，统一清洗成 key 含 "::" 且 value 为合法时间戳
+  const marks = merged.optionMarks
+  if (!marks || typeof marks !== 'object' || Array.isArray(marks)) {
+    merged.optionMarks = {}
+  } else {
+    const clean: Record<string, number> = {}
+    for (const [k, v] of Object.entries(marks)) {
+      if (typeof k === 'string' && k.includes('::') && typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+        clean[k] = Math.floor(v)
+      }
+    }
+    merged.optionMarks = clean
+  }
   return merged
 }
 
@@ -81,9 +97,69 @@ export interface ToastItem {
   desc: string
 }
 
+/**
+ * 写盘保护：把磁盘上已有的「已掌握」标记合并进本次要写的数据。
+ * 多标签页各持有一份内存副本，旧标签在写学习时长时会把自己过期的 stats 整份写回，
+ * 把新标签刚答对的题冲成未掌握。everCorrect 一旦为 true 就不允许被旧数据改回 false。
+ * 主动清空 / 导入备份时不走这个合并（那是用户明确的覆盖意图）。
+ */
+function withPreservedMastery(next: ProgressData): ProgressData {
+  let raw: string | null = null
+  try {
+    raw = localStorage.getItem(KEY)
+  } catch {
+    return next
+  }
+  if (!raw) return next
+  let prev: ProgressData
+  try {
+    prev = JSON.parse(raw) as ProgressData
+  } catch {
+    return next
+  }
+  if (!prev || prev.version !== 1 || !prev.stats || typeof prev.stats !== 'object') return next
+  let stats = next.stats
+  let changed = false
+  for (const [qid, s] of Object.entries(prev.stats)) {
+    if (!s?.everCorrect) continue
+    const cur = stats[qid]
+    if (cur?.everCorrect) continue
+    if (!changed) {
+      stats = { ...stats }
+      changed = true
+    }
+    // 保留本次的其他字段（作答次数、错题本状态等），只把 everCorrect 补回 true
+    stats[qid] = cur
+      ? { ...cur, everCorrect: true }
+      : {
+          attempts: 0,
+          streak: 0,
+          everCorrect: true,
+          lastCorrect: true,
+          needsReview: false,
+          lastAt: 0,
+        }
+  }
+  return changed ? { ...next, stats } : next
+}
+
 export const useProgressStore = defineStore('progress', () => {
   const data = reactive(load())
-  watch(data, () => localStorage.setItem(KEY, JSON.stringify(data)), { deep: true })
+  // 主动清空 / 导入备份时跳过上面的合并，否则旧数据会被"复活"
+  let skipPreserve = false
+  watch(
+    data,
+    () => {
+      const payload = skipPreserve ? data : withPreservedMastery(data)
+      skipPreserve = false
+      try {
+        localStorage.setItem(KEY, JSON.stringify(payload))
+      } catch {
+        // 隐私模式或容量不足：本次不落盘，不影响内存中的进度
+      }
+    },
+    { deep: true },
+  )
 
   /* ---------- 激励通知 ---------- */
   const toasts = ref<ToastItem[]>([])
@@ -172,6 +248,44 @@ export const useProgressStore = defineStore('progress', () => {
     else markDoubt(qid)
   }
 
+  /** 选项级标记的复合键：题目 id + 选项 key，避免不同题目同选项互相覆盖 */
+  function optionMarkKey(qid: string, optKey: string): string {
+    return `${qid}::${optKey}`
+  }
+
+  /** 导入坏数据 / 手改 localStorage 后，也保证选项标记容器是个可写对象 */
+  function ensureOptionMarks(): Record<string, number> {
+    const m = data.optionMarks
+    if (!m || typeof m !== 'object' || Array.isArray(m)) data.optionMarks = {}
+    return data.optionMarks
+  }
+
+  function isOptionMarked(qid: string, optKey: string): boolean {
+    const m = data.optionMarks
+    return !!m && typeof m === 'object' && !Array.isArray(m) && optionMarkKey(qid, optKey) in m
+  }
+
+  /** 选项级标记：点一下标记、再点一下取消；时间戳可用于排序 */
+  function toggleOptionMark(qid: string, optKey: string) {
+    const marks = ensureOptionMarks()
+    const key = optionMarkKey(qid, optKey)
+    if (key in marks) delete marks[key]
+    else marks[key] = Date.now()
+  }
+
+  /** 某题被标记的选项 key 列表（供 QuestionCard 回显星标状态） */
+  function markedOptionsOf(qid: string): string[] {
+    const m = data.optionMarks
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return []
+    const prefix = `${qid}::`
+    return Object.keys(m)
+      .filter((k) => k.startsWith(prefix))
+      .map((k) => k.slice(prefix.length))
+  }
+
+  /** 已标记选项总数（设置页数据概览） */
+  const optionMarkCount = computed(() => Object.keys(data.optionMarks ?? {}).length)
+
   /** 导入坏数据 / 手改 localStorage 后，也保证重点标记容器是个可写对象 */
   function ensureSqlFocused(): Record<string, number> {
     const f = data.sqlFocused
@@ -192,6 +306,13 @@ export const useProgressStore = defineStore('progress', () => {
 
   function setLastVisit(moduleId: string, chapterId: string) {
     data.lastVisit = { moduleId, chapterId }
+  }
+
+  /** 专注模式完成一次（分钟数只用于文案）：奖励固定 +10 XP */
+  function completeFocus(minutes: number) {
+    data.focusCount = (data.focusCount ?? 0) + 1
+    addXp(10)
+    pushToast('🍅', `专注 ${minutes} 分钟完成！`, `第 ${data.focusCount} 次专注 · 奖励 +10 XP，起来喝口水吧`)
   }
 
   /** 手写 SQL 练习：每次提交计 1 题到每日目标；首次通过 +20 XP，复过 +6，失败 +2 */
@@ -305,6 +426,7 @@ export const useProgressStore = defineStore('progress', () => {
       const parsed = JSON.parse(json) as ProgressData
       if (!parsed || parsed.version !== 1 || typeof parsed.stats !== 'object')
         return '文件格式不符合进度备份要求'
+      skipPreserve = true
       Object.assign(data, JSON.parse(JSON.stringify(normalize(parsed))))
       return null
     } catch (e) {
@@ -313,6 +435,7 @@ export const useProgressStore = defineStore('progress', () => {
   }
 
   function resetAll() {
+    skipPreserve = true
     Object.assign(data, defaultData())
   }
 
@@ -412,9 +535,14 @@ export const useProgressStore = defineStore('progress', () => {
     markDoubt,
     unmarkDoubt,
     toggleDoubt,
+    isOptionMarked,
+    toggleOptionMark,
+    markedOptionsOf,
+    optionMarkCount,
     toggleSqlFocus,
     unmarkSqlFocus,
     isSqlFocused,
+    completeFocus,
     setLastVisit,
     startExam,
     saveExamAnswer,

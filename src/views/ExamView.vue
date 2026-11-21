@@ -92,6 +92,10 @@ function onToggle(key: string) {
   store.saveExamAnswer(current.value.q.id, next)
 }
 
+function onToggleOptionMark(key: string) {
+  if (current.value) store.toggleOptionMark(current.value.q.id, key)
+}
+
 function submitExam(auto = false) {
   const e = exam.value
   if (!e) return
@@ -183,8 +187,10 @@ function pct(s: { correct: number; total: number }) {
       :question="current.q"
       :selected="exam.answers[current.q.id] ?? []"
       :submitted="false"
+      :marked-options="store.markedOptionsOf(current.q.id)"
       exam-mode
       @toggle="onToggle"
+      @toggle-option-mark="onToggleOptionMark"
     />
 
     <div class="exam-nav">
@@ -231,7 +237,9 @@ function pct(s: { correct: number; total: number }) {
             v-if="questionById(qid)"
             :question="questionById(qid)!.q"
             :selected="lastResult.answers[qid] ?? []"
+            :marked-options="store.markedOptionsOf(qid)"
             submitted
+            @toggle-option-mark="(key: string) => store.toggleOptionMark(qid, key)"
           />
         </div>
       </template>
