@@ -2196,3 +2196,54 @@ summary {
 .ai-format-line b {
   color: #b7c1ff;
 }
+
+/* AI 对话式追问：用户问题右侧小气泡 + AI 主气泡 */
+.ai-msg {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.ai-msg-user {
+  align-self: flex-end;
+  max-width: 80%;
+  background: linear-gradient(120deg, rgba(124, 140, 255, 0.22), rgba(56, 217, 245, 0.14));
+  border: 1px solid rgba(124, 140, 255, 0.4);
+  border-radius: 14px 14px 4px 14px;
+  padding: 8px 13px;
+  font-size: 13.5px;
+  color: #dce6ff;
+}
+
+.ai-msg-assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-text {
+  background: #0a101f;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 15px;
+  color: #dce6ff;
+  font-size: 14px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mermaid-box {
+  background: #0d1424;
+  border: 1px solid rgba(56, 217, 245, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.mermaid-box svg {
+  max-width: 100%;
+  height: auto;
+}

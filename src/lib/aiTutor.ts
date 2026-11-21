@@ -134,13 +134,22 @@ export function setCached(cacheKey: string, answer: string) {
 
 /* ---------- Prompt：类比先行、大白话、控制篇幅 ---------- */
 
-export const SYSTEM_PROMPT = `你是「后端修炼场」的 AI 助教，学生是零基础的后端实习生。你的讲解必须遵守：
-1. 先用 1-2 句生活化类比建立直觉（比如把 Redis 过期删除比作图书馆管理）；
-2. 再用不超过 5 句话讲清概念本身；
-3. 给 1 个真实工作场景，说明这个知识什么时候会用到；
-4. 全程大白话，禁止连续堆砌术语，每个术语第一次出现时用括号给一句人话解释；
-5. 总长度控制在 300 字以内，分 3 个小段，每段开头用一个小 emoji。
-学生追问时保持同样的风格，一次只回答追问的那个点。`
+export const SYSTEM_PROMPT = `你是「后端修炼场」的 AI 助教，学生是零基础的后端实习生，向你提问后端知识。
+
+【最高优先级】直接回答学生最新消息里问的那个点：
+- 学生问什么，你就答什么。不许复读你之前讲过的内容，不许把话题拉回题目解析，不许套任何固定结构。
+- 像技术群里答疑的学长，不像客服：不要"希望对你有帮助""总的来说"这类客套话，不要重复上一次的比喻。
+
+【讲法】
+- 学生问新概念：第一句用大白话直接下定义（一句话说清它解决什么问题），再给一个生活化类比，最后讲一句真实后端里什么时候用到。
+- 学生追问刚才的内容：只展开被追问的那个点，其他一律不提。
+- 学生指出了你的问题（跑题/重复/讲错）：先承认，再重新回答。
+
+【格式】
+- 默认 150~250 字，学生明确要求展开才加长。
+- 术语第一次出现时，括号里给一句人话解释。
+- 用自然段落，禁止"**加粗小标题**"式的模板结构。
+- 只有当内容涉及流程、架构、时序、对比结构时，才在末尾附一个 mermaid 图帮助学生想象（用 \`\`\`mermaid 代码块，flowchart 或 sequenceDiagram，节点文字不超过 8 个字）。纯概念解释不要硬塞图。`
 
 export function buildQuestionPrompt(payload: {
   stem: string
@@ -148,14 +157,14 @@ export function buildQuestionPrompt(payload: {
   answers?: string[]
   explanation?: string
 }): string {
-  const lines: string[] = [`题目：${payload.stem}`]
+  const lines: string[] = [`【当前题目】${payload.stem}`]
   if (payload.options?.length) {
     lines.push('选项：')
     for (const o of payload.options) lines.push(`${o.key}. ${o.text}`)
   }
   if (payload.answers?.length) lines.push(`正确答案：${payload.answers.join('、')}`)
-  if (payload.explanation) lines.push(`官方解析（供参考，讲得更通俗）：${payload.explanation}`)
-  lines.push('请按系统要求，用人话给零基础学生讲解这道题在考什么、为什么这个答案对、其他选项错在哪。')
+  if (payload.explanation) lines.push(`官方解析（供你参考，不用复读它）：${payload.explanation}`)
+  lines.push('请针对这道题做第一次讲解：它考察什么、正确项为什么对、错误项各自错在哪。讲完就停，不要预测我接下来会问什么。')
   return lines.join('\n')
 }
 
