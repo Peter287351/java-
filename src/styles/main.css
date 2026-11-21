@@ -2178,3 +2178,21 @@ summary {
     grid-template-columns: 1fr;
   }
 }
+
+/* AI 配置：API 格式展示行 */
+.ai-format-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(124, 140, 255, 0.1);
+  border: 1px solid rgba(124, 140, 255, 0.3);
+  font-size: 13px;
+}
+
+.ai-format-line b {
+  color: #b7c1ff;
+}

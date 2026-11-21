@@ -8,19 +8,83 @@ export interface AiConfig {
 
 const CFG_KEY = 'hds_ai_config'
 const CACHE_KEY = 'hds_ai_cache_v1'
+/** 按服务商记忆各自的 Key：额度不够换服务商时自动带出，不用翻旧记录 */
+const KEY_MEMORY = 'hds_ai_keys'
 
-export const AI_PRESETS = [
+export interface AiPreset {
+  id: string
+  label: string
+  baseUrl: string
+  model: string
+  /** 该服务商常用的模型下拉建议（可自由输入其他值） */
+  models?: string[]
+}
+
+export const AI_PRESETS: AiPreset[] = [
   {
     id: 'opencode',
     label: 'OpenCode Go（ZCode 同款网关）',
     baseUrl: 'https://opencode.ai/zen/go/v1',
     model: '',
+    models: [
+      'glm-5.3-flash',
+      'glm-5.3',
+      'kimi-k3',
+      'kimi-k2.7-code',
+      'deepseek-v4.1-flash',
+      'deepseek-v4-pro',
+      'mimo-v2.5',
+    ],
   },
-  { id: 'deepseek', label: 'DeepSeek（推荐，便宜）', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { id: 'moonshot', label: 'Kimi / Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
-  { id: 'qwen', label: '通义千问（OpenAI 兼容）', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  {
+    id: 'deepseek',
+    label: 'DeepSeek（推荐，便宜）',
+    baseUrl: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    models: ['deepseek-chat', 'deepseek-reasoner'],
+  },
+  {
+    id: 'moonshot',
+    label: 'Kimi / Moonshot',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    model: 'moonshot-v1-8k',
+    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  },
+  {
+    id: 'qwen',
+    label: '通义千问（OpenAI 兼容）',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen-plus',
+    models: ['qwen-plus', 'qwen-turbo', 'qwen-max'],
+  },
   { id: 'custom', label: '自定义（任意 OpenAI 兼容）', baseUrl: '', model: '' },
 ]
+
+export function rememberKey(baseUrl: string, apiKey: string) {
+  if (!baseUrl || !apiKey) return
+  try {
+    const raw = localStorage.getItem(KEY_MEMORY)
+    const map = raw ? (JSON.parse(raw) as Record<string, string>) : {}
+    map[baseUrl] = apiKey
+    localStorage.setItem(KEY_MEMORY, JSON.stringify(map))
+  } catch {
+    /* 记忆失败不影响主流程 */
+  }
+}
+
+export function recallKey(baseUrl: string): string {
+  try {
+    const raw = localStorage.getItem(KEY_MEMORY)
+    if (!raw) return ''
+    return (JSON.parse(raw) as Record<string, string>)[baseUrl] ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function clearKeyMemory() {
+  localStorage.removeItem(KEY_MEMORY)
+}
 
 export function getAiConfig(): AiConfig | null {
   try {

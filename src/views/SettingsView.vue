@@ -3,7 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { getChapter, getModule, questionById, modules, totalQuestionCount } from '@/lib/content'
 import { useProgressStore } from '@/stores/progress'
 import { formatStudyTime, plainText } from '@/lib/utils'
-import { AI_PRESETS, chatStream, clearAiConfig, getAiConfig, saveAiConfig } from '@/lib/aiTutor'
+import { AI_PRESETS, chatStream, clearAiConfig, clearKeyMemory, getAiConfig, recallKey, rememberKey, saveAiConfig } from '@/lib/aiTutor'
 import MarkdownView from '@/components/MarkdownView.vue'
 import { mascotHidden, setMascotHidden } from '@/lib/mascotPref'
 import { resetStudySession } from '@/lib/studyTimer'
@@ -28,12 +28,21 @@ function applyPreset() {
   const p = AI_PRESETS.find((x) => x.id === aiForm.preset)
   if (!p) return
   if (p.baseUrl) aiForm.baseUrl = p.baseUrl
-  // 预设自带默认模型才覆盖；OpenCode Go 的模型名由用户自己填
-  if (p.model) aiForm.model = p.model
+  // 预设带模型建议则取第一个；同时自动带出该服务商上次用的 Key（各服务商 Key 不通用）
+  if (p.models?.length) aiForm.model = p.models[0]
+  else if (p.model) aiForm.model = p.model
+  if (p.baseUrl) aiForm.apiKey = recallKey(p.baseUrl)
 }
 
+/** 当前预设的模型下拉建议 */
+const modelSuggestions = computed(
+  () => AI_PRESETS.find((x) => x.id === aiForm.preset)?.models ?? [],
+)
+
 function saveAi() {
-  saveAiConfig({ baseUrl: aiForm.baseUrl.trim(), apiKey: aiForm.apiKey.trim(), model: aiForm.model.trim() })
+  const baseUrl = aiForm.baseUrl.trim()
+  saveAiConfig({ baseUrl, apiKey: aiForm.apiKey.trim(), model: aiForm.model.trim() })
+  rememberKey(baseUrl, aiForm.apiKey.trim())
   aiSaved.value = true
   setTimeout(() => (aiSaved.value = false), 2500)
   message.value = 'AI 助教配置已保存（仅保存在本机浏览器）'
@@ -41,8 +50,10 @@ function saveAi() {
 
 function removeAi() {
   clearAiConfig()
+  clearKeyMemory()
   aiForm.apiKey = ''
-  message.value = '已清除 AI 配置'
+  aiForm.model = ''
+  message.value = '已清除 AI 配置（含各服务商的 Key 记忆）'
 }
 
 async function testAi() {
@@ -134,6 +145,10 @@ const doubts = computed(() =>
       <br /><b>隐私说明：</b>API Key 只保存在你自己的浏览器 localStorage，请求从你的浏览器<b>直连</b>你选的服务商，不经过本站任何服务器、不进代码仓库。
       推荐用 <a href="https://platform.deepseek.com/" target="_blank" rel="noopener">DeepSeek 开放平台</a> 申请（便宜，OpenAI 兼容）。
     </p>
+    <div class="ai-format-line">
+      <span>API 格式：<b>Chat Completions（POST /chat/completions）</b></span>
+      <span class="muted small">—— 已按网关要求自动配置好 URL 与格式，无需修改；本地开发自动走代理绕开跨域</span>
+    </div>
     <div class="ai-form">
       <label>
         服务商预设
@@ -146,8 +161,11 @@ const doubts = computed(() =>
         <input v-model="aiForm.baseUrl" type="text" placeholder="https://opencode.ai/zen/go/v1" />
       </label>
       <label>
-        模型名 Model（自己填，如 glm-5.3-flash）
-        <input v-model="aiForm.model" type="text" placeholder="glm-5.3-flash" />
+        模型名 Model（下拉可选，也可自由输入）
+        <input v-model="aiForm.model" type="text" list="ai-model-list" placeholder="glm-5.3-flash" />
+        <datalist id="ai-model-list">
+          <option v-for="m in modelSuggestions" :key="m" :value="m" />
+        </datalist>
       </label>
       <label>
         API Key（自己填，只存本机浏览器）
@@ -168,6 +186,7 @@ const doubts = computed(() =>
     </p>
     <p class="muted small" style="margin: 8px 0 0">
       提示：Key 永远只存在本机浏览器、随测试连接直连服务商，不会出现在代码与 Git 仓库里；公共电脑用完点「清除配置」；导出的进度备份不含 API Key。
+      <br />额度不够时：同一个网关直接在「模型名」下拉里换模型（如 glm-5.3-flash → deepseek-v4.1-flash，Key 不变）；要换到 DeepSeek 官方则切预设「DeepSeek」——各服务商的 Key 已按服务商分别记忆，切换时自动带出。
       <template v-if="aiForm.preset === 'opencode'">
         <br />⚠️ 已知限制：OpenCode Go 网关不支持浏览器跨域直连，本地用 <b>npm run dev</b> 时会自动走本地代理（需保持 dev 在运行）；部署上线后请改用 DeepSeek 等预设。
       </template>
