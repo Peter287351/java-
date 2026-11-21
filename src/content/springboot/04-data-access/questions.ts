@@ -133,4 +133,36 @@ export const questions: QuestionSpec[] = [
     explanation:
       '根因是「DB 事务」与「MQ 投递」是两个独立系统：事务未提交时消息已出，回滚无法追回。A 给出两类标准方案：提交后投递（afterCommit）与本地消息表/事务消息（RocketMQ 半消息），都保证"只有真正提交的事务才会产生消息"。B 更糟——消息先出而订单可能根本没写成功；C 掩盖异常、破坏一致性；D 混淆了"原子性"与"幂等"：二者根本不是原子操作，加幂等只解决重复消费，解决不了回滚后的脏消息。',
   },
+  {
+    id: 'springboot-04-data-access-009',
+    type: 'single',
+    difficulty: 2,
+    tags: ['MyBatis-Plus', '乐观锁'],
+    stem: '实体字段标了 @Version 想用 MyBatis-Plus 的乐观锁，但更新时 version 既没参与条件也没自增。最可能的原因是？',
+    options: [
+      { key: 'A', text: '没有注册 OptimisticLockerInnerInterceptor——插件机制和分页一样，拦截器不注册就不生效，@Version 会被当成普通列' },
+      { key: 'B', text: '@Version 注解已过时，MP 早已不支持乐观锁' },
+      { key: 'C', text: '乐观锁需要数据库触发器配合才能生效' },
+      { key: 'D', text: 'version 字段必须是 String 类型才行' },
+    ],
+    answers: ['A'],
+    explanation:
+      'MP 的增强能力（分页/乐观锁/防全表更新）全部通过 InnerInterceptor 注册：注册 OptimisticLockerInnerInterceptor 后，updateById 会自动带上 version=旧值 的条件并把新值 +1；没注册时 @Version 只是普通字段。B/C/D 均不成立。配套要求：实体用 @Version 标注版本字段，更新以 getById 拿到旧值再改。',
+  },
+  {
+    id: 'springboot-04-data-access-010',
+    type: 'single',
+    difficulty: 2,
+    tags: ['MyBatis-Plus', '自动填充'],
+    stem: '要求 insert 时自动填 createTime/createBy，update 时自动刷新 updateTime。用 MyBatis-Plus 的标准做法是？',
+    options: [
+      { key: 'A', text: '实现 MetaObjectHandler 接口的 insertFill/updateFill，实体字段标注 @TableField(fill = FieldFill.INSERT / INSERT_UPDATE)' },
+      { key: 'B', text: '在数据库建触发器自动写入，MP 不需要任何配置' },
+      { key: 'C', text: 'MP 会自动识别名为 createTime/updateTime 的字段并填充，无需任何配置' },
+      { key: 'D', text: '在每个 Mapper XML 的 SQL 里手写 now() 函数' },
+    ],
+    answers: ['A'],
+    explanation:
+      'MetaObjectHandler + @TableField(fill=...) 是 MP 的标准自动填充机制：插入/更新时按 FieldFill 策略回调填充器， centrally 维护创建/更新审计字段。B 可行但脱离 MP 机制、难测试且不跨库；C 不存在——不配置就不会有魔法填充；D 冗余且易漏。',
+  },
 ]

@@ -115,4 +115,36 @@ export const questions: QuestionSpec[] = [
     explanation:
       '密钥入库是安全红线，仓库泄露即等于数据库泄露；正确做法是环境变量/启动参数/配置中心注入，仓库只留占位。A/C/D 都是标准实践。',
   },
+  {
+    id: 'springboot-02-config-profiles-008',
+    type: 'single',
+    difficulty: 2,
+    tags: ['config.import'],
+    stem: '团队想把部分配置拆到独立文件、并准备接入配置中心。Spring Boot 2.4+ 官方推荐的引入机制是？',
+    options: [
+      { key: 'A', text: 'spring.config.import: classpath:extra.yml / nacos:xxx —— 一条配置引入额外文件或配置中心数据' },
+      { key: 'B', text: '用 @PropertySource 注解读取任意远端配置中心' },
+      { key: 'C', text: '把所有配置手动复制进 application.yml，靠人肉保持同步' },
+      { key: 'D', text: '在启动类里用 System.setProperty 逐个注入' },
+    ],
+    answers: ['A'],
+    explanation:
+      'spring.config.import（2.4+）是官方统一入口：可导入 classpath/文件系统文件，配合各配置中心的 starter 还能直接写 nacos:/apollo:/consul: 前缀，被导入的配置优先级高于导入方。B 的 @PropertySource 不支持 yml、也不管远端；C/D 都是反模式。',
+  },
+  {
+    id: 'springboot-02-config-profiles-009',
+    type: 'code',
+    difficulty: 3,
+    tags: ['优先级', '外置配置'],
+    stem: '应用以 java -jar app.jar 启动（未传任何命令行参数），jar 内外的两个配置文件内容如下：\n\n~~~properties\n# jar 包内 classpath：application.yml\nserver.port=8080\n~~~\n\n~~~properties\n# jar 同目录 ./config/application.yml\nserver.port=9090\n~~~\n\n最终监听的端口是？',
+    options: [
+      { key: 'A', text: '8080：classpath 里的配置才是 Spring Boot 认的' },
+      { key: 'B', text: '9090：jar 外部 ./config/ 目录的配置优先级高于 jar 内 classpath' },
+      { key: 'C', text: '启动失败：检测到两个 application.yml 冲突' },
+      { key: 'D', text: '随机选一个，每次启动可能不同' },
+    ],
+    answers: ['B'],
+    explanation:
+      'Spring Boot 的配置搜索顺序中，「jar 运行目录下的 ./config/」排在「jar 内 classpath」之后但优先级更高——这正是"发版后改外置配置不用重新打包"的原理。外置 profile 文件、命令行参数还会进一步覆盖它。C 不会冲突（高优先级覆盖低优先级）；D 不存在。',
+  },
 ]

@@ -131,4 +131,56 @@ export const questions: QuestionSpec[] = [
     explanation:
       '默认单线程调度器串行执行所有任务，慢任务是"整点任务没跑"的经典原因；解法：配置 TaskScheduler 线程池、拆分慢任务、或改用调度平台。C 恰恰相反，单线程不会并发；A/D 不成立。',
   },
+  {
+    id: 'springboot-06-engineering-009',
+    type: 'single',
+    difficulty: 2,
+    tags: ['CommandLineRunner'],
+    stem: '想在某类缓存数据"应用启动后、开始对外服务前"做一次预热加载，最合适的机制是？',
+    options: [
+      { key: 'A', text: '实现 CommandLineRunner / ApplicationRunner（实现 @Order 控制先后），它们在容器刷新完成、应用就绪前执行' },
+      { key: 'B', text: '在某个 Bean 的 @PostConstruct 里直接做全量预热' },
+      { key: 'C', text: '在第一个请求进来时懒加载预热' },
+      { key: 'D', text: '用 @Scheduled(cron="0 0 0 * * ?") 每天凌晨跑一次' },
+    ],
+    answers: ['A'],
+    explanation:
+      'Runner 的生命周期位置：所有 Bean 就绪 → 应用 Started → 依次执行 CommandLineRunner/ApplicationRunner（可 @Order 排序）→ 应用 Ready 开始接客。B 的 @PostConstruct 是单个 Bean 级回调，此时其他 Bean 可能还没就绪，做全局预热容易踩依赖；C 让第一个用户承担预热耗时；D 是周期任务不是启动预热。若预热逻辑依赖"应用完全就绪"，还可监听 ApplicationReadyEvent。',
+  },
+  {
+    id: 'springboot-06-engineering-010',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['优雅停机'],
+    scenario:
+      'K8s 滚动更新时，Pod 收到 SIGTERM 后进程立即退出，正在处理的请求被掐断返回 502。运维要求"旧实例把手头请求处理完、并停止接新请求之后再退出"。',
+    stem: '最标准的实现组合是？',
+    options: [
+      { key: 'A', text: '开启优雅停机：server.shutdown=graceful + spring.lifecycle.timeout-per-shutdown-phase（如 30s）——SIGTERM 后先停止接新请求、等存量请求处理完（或超时）再关闭容器；并让 K8s 的 terminationGracePeriodSeconds 大于该超时' },
+      { key: 'B', text: '不需要配置，Spring Boot 默认就会等所有存量请求处理完再退出' },
+      { key: 'C', text: '在 @PreDestroy 里 Thread.sleep(30000) 拖 30 秒再走' },
+      { key: 'D', text: '这是纯 K8s 的事，应用层无法参与停机过程' },
+    ],
+    answers: ['A'],
+    explanation:
+      'Spring Boot 2.3+ 内置优雅停机：graceful 模式下收到 SIGTERM 先让 Web 服务器停止接受新连接，给存量请求一个宽限期（timeout-per-shutdown-phase），超时才强制关闭。默认（immediate）就是立刻掐——B 与事实相反。C 是粗暴 hack：睡在关闭线程上并不能停止接新请求，被掐的请求照样断；D 错误——应用层行为（graceful 配置）恰恰是关键一环，K8s 侧只需保证 grace 周期足够。',
+  },
+  {
+    id: 'springboot-06-engineering-011',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['Micrometer', '监控'],
+    scenario:
+      '领导要求把"接口 QPS 与耗时、JVM 内存、自定义业务指标（当前排队任务数）"接入 Grafana 看板，团队在讨论 Spring Boot 侧怎么接。',
+    stem: '最标准的接入路径是？',
+    options: [
+      { key: 'A', text: 'Actuator 底层是 Micrometer 门面：加 micrometer-registry-prometheus 依赖暴露 /actuator/prometheus，Prometheus 定时抓取、Grafana 展示；业务指标注入 MeterRegistry 注册 Gauge/Counter/Timer' },
+      { key: 'B', text: '自己写一个 /metrics 接口返回 System.currentTimeMillis 统计值，前端轮询画图' },
+      { key: 'C', text: '在业务代码里到处 System.out.println 计数，再 grep 日志统计' },
+      { key: 'D', text: 'Micrometer 是商业 APM 的私有协议，必须购买商业版才能用' },
+    ],
+    answers: ['A'],
+    explanation:
+      'Micrometer 是 Spring 官方的指标门面（SLF4J 之于日志 = Micrometer 之于监控）：Actuator 的 /actuator/prometheus 端点输出标准格式，Prometheus 抓取 + Grafana 出图是开源免费全家桶；业务指标用 MeterRegistry 注册（Gauge 瞬时值如排队数、Counter 累计数、Timer 耗时分布）。B/C 重复造轮子且无维度聚合能力；D 错误——门面开源，后端可随意替换，这正是面试要点（与具体监控实现解耦）。',
+  },
 ]

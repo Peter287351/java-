@@ -131,4 +131,38 @@ export const questions: QuestionSpec[] = [
     explanation:
       '条件评估报告逐条列出每个自动配置类 Positive matches / Negative matches 及命中的具体条件注解——是官方设计好的诊断入口。A 成本极高且方向错；C 的 ERROR 级别反而看不到细节；D 无逻辑。',
   },
+  {
+    id: 'springboot-01-autoconfig-009',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['懒加载'],
+    scenario:
+      '为加快启动，有人在 application.yml 全局开了 spring.main.lazy-initialization=true：启动快了 3 秒，但上线后第一个用户的请求特别慢，且 @Scheduled 定时任务压根没有按时执行。',
+    stem: '对现象的解释与更合理的做法是？',
+    options: [
+      { key: 'A', text: '懒加载把 Bean 的创建推迟到首次使用：首个请求要连带初始化一大串 Bean 所以慢；@Scheduled 的 Bean 没被创建就不会注册调度任务。建议撤掉全局开关，只对个别重 Bean 用 @Lazy 做粒度控制' },
+      { key: 'B', text: '懒加载只影响启动速度，运行期行为完全一样，请求慢是网络抖动造成的' },
+      { key: 'C', text: 'lazy-initialization 会把所有 Bean 变成 prototype 作用域，每次注入都是新实例' },
+      { key: 'D', text: '定时任务不受懒加载影响，没执行一定是 cron 表达式写错了' },
+    ],
+    answers: ['A'],
+    explanation:
+      '全局懒加载是"把启动成本搬到了运行期"：首个请求触发级联初始化（自己 + 依赖链上的所有 Bean），造成冷启动毛刺；@Scheduled 的调度注册发生在 Bean 创建后，Bean 没建就不会被调度——这正是"定时任务没跑"的原因。正确做法是按需 @Lazy（Bean 级），而非全局一刀切。B 忽视了运行期行为差异；C 混淆了懒加载与作用域；D 没看到机制层面的因果。',
+  },
+  {
+    id: 'springboot-01-autoconfig-010',
+    type: 'code',
+    difficulty: 2,
+    tags: ['ConfigurationProperties', '松散绑定'],
+    stem: '有如下配置类与配置文件，注入后的字段值是什么？\n\n~~~java\n@ConfigurationProperties(prefix = "mail")\npublic class MailProps {\n    private String host;\n    private int port = 25;\n    private boolean ssl;\n    // getter/setter 省略\n}\n~~~\n\n~~~yaml\nmail:\n  HOST: smtp.ex.com\n  port: "465"\n  ssl: true\n~~~',
+    options: [
+      { key: 'A', text: 'host 为 null：HOST 与 host 大小写不匹配，绑定失败' },
+      { key: 'B', text: 'host=smtp.ex.com、port=465、ssl=true：松散绑定匹配 HOST，字符串 "465" 自动转成 int' },
+      { key: 'C', text: 'port 绑定失败抛异常：yml 里写的是字符串 "465"，无法转成 int' },
+      { key: 'D', text: 'ssl 绑定失败：布尔值必须去掉引号书写' },
+    ],
+    answers: ['B'],
+    explanation:
+      '@ConfigurationProperties 的绑定器做了两件事：松散绑定让 HOST/hostname/host-name 都匹配 host 字段；类型转换把字符串 "465" 转成 int 465、"true" 转成 boolean。三者全部正常绑定，B 正确。A/D 对松散绑定与转换能力理解错误；C 是把 yml 的字符串值当成"无法转数字"——绑定器自带类型转换。这也是 @ConfigurationProperties 比 @Value 好用的原因之一。',
+  },
 ]

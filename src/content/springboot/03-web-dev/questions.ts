@@ -131,4 +131,54 @@ export const questions: QuestionSpec[] = [
     explanation:
       '上传大小由 multipart 配置限制，调大（或按业务用对象存储直传绕开应用层）即可；同时建议在全局异常处理器里对该异常返回友好提示。A/C/D 与限制来源无关。',
   },
+  {
+    id: 'springboot-03-web-dev-009',
+    type: 'code',
+    difficulty: 2,
+    tags: ['@Async'],
+    stem: '如下代码，GET /report 接口的返回值最接近的是？\n\n~~~java\n@Service\npublic class ReportService {\n    @Async\n    public CompletableFuture<Integer> calc() throws Exception {\n        Thread.sleep(2000); // 模拟耗时统计\n        return CompletableFuture.completedFuture(42);\n    }\n}\n\n@RestController\npublic class ReportController {\n    @GetMapping("/report")\n    public String report() {\n        long start = System.currentTimeMillis();\n        reportService.calc(); // @Async 方法\n        long cost = System.currentTimeMillis() - start;\n        return "cost=" + cost;\n    }\n}\n~~~',
+    options: [
+      { key: 'A', text: 'cost=2000 左右：@Async 方法会让调用方阻塞到执行完成' },
+      { key: 'B', text: 'cost 接近 0：calc 被提交给异步线程池立即返回，调用方不等待' },
+      { key: 'C', text: 'cost 接近 0，且前端能拿到 42' },
+      { key: 'D', text: '编译错误：@Async 方法不能有返回值' },
+    ],
+    answers: ['B'],
+    explanation:
+      '@Async 方法经代理调用后立即返回，执行体交给异步线程池：calc() 里的 2 秒睡在另一个线程上，调用方拿到 CompletableFuture 后继续往下走，所以 cost 接近 0（A 恰好说反）。C 错——返回值在 Future 里，调用方没调用 get()，前端拿不到 42；需要结果时用 f.get(timeout)。D 错误：@Async 支持 void/CompletableFuture/普通返回值（后者仍是异步执行，但结果要靠 Future 接）。',
+  },
+  {
+    id: 'springboot-03-web-dev-010',
+    type: 'single',
+    difficulty: 2,
+    tags: ['@Async', '线程池'],
+    stem: 'Spring Boot 中给方法标注 @Async 但没有指定执行器名称，默认的行为是？',
+    options: [
+      { key: 'A', text: '在调用方线程里同步执行，等于没加注解' },
+      { key: 'B', text: '使用自动配置的 applicationTaskExecutor（ThreadPoolTaskExecutor，默认核心 8 线程、队列无界）；纯 Spring 环境找不到执行器 Bean 时才退化为 SimpleAsyncTaskExecutor（每次新建线程）' },
+      { key: 'C', text: '复用 @Scheduled 的那个单线程调度器' },
+      { key: 'D', text: '必须手动 new Thread 才能生效' },
+    ],
+    answers: ['B'],
+    explanation:
+      'Spring Boot 自动配置了 applicationTaskExecutor（核心 8、最大无限但队列 Integer.MAX_VALUE——即先堆队列），@Async 默认用它；纯 Spring 的 @EnableAsync 找不到 TaskExecutor 时才退化成 SimpleAsyncTaskExecutor（每任务一个新线程，有资源风险）。A 是没生效时的现象（通常因自调用/漏 @EnableAsync）；C 是 @Scheduled 的线程池；D 胡写。生产建议显式定义有界队列的 Executor 并给 @Async 指定名称。',
+  },
+  {
+    id: 'springboot-03-web-dev-011',
+    type: 'scenario',
+    difficulty: 3,
+    tags: ['幂等'],
+    scenario:
+      '下单接口被用户连点两次按钮 + 网关超时重试，同一请求到达后端两次，生成了两张相同订单。团队讨论防重复提交方案。',
+    stem: '最可靠的组合方案是？',
+    options: [
+      { key: 'A', text: '多层防护：前端按钮防抖 + 后端一次性 token（进页面发放，提交携带，Redis 判断+删除原子化）+ 订单业务唯一约束（用户+商品+活动等落唯一索引）作最后防线' },
+      { key: 'B', text: '前端把按钮置灰就够了，后端不需要任何处理' },
+      { key: 'C', text: '给 Service 方法加 synchronized 锁住即可' },
+      { key: 'D', text: '订单表用自增主键天然幂等，不用额外处理' },
+    ],
+    answers: ['A'],
+    explanation:
+      '幂等要"前端减发生率、后端保正确性"：token 方案在服务端原子校验+删除，挡住连点与重试；业务唯一约束（唯一索引）是数据库层的最后防线——就算前面全失效，第二条 insert 也会被拒绝。B 挡不住绕过前端的重试；C 只在单机 JVM 内有效，多实例部署失效，且锁粒度是整个方法而非同一笔订单；D 错误——自增主键每次插入都是新行，恰恰是不幂等的来源。',
+  },
 ]
